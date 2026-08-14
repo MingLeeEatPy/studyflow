@@ -10,7 +10,7 @@ import {
 } from '../src/domain';
 import type { Task } from '../src/domain/models';
 
-const NOW = new Date('2026-08-14T12:00:00+08:00');
+const NOW = new Date(2026, 7, 14, 12, 0);
 
 function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -56,18 +56,18 @@ describe('Today 本地日期规则', () => {
     const completedToday = task({
       id: 'completed-today',
       completed: true,
-      completedAt: '2026-08-14T02:00:00.000Z', // 上海 10:00
+      completedAt: new Date(2026, 7, 14, 10, 0).toISOString(),
     });
     const completedYesterday = task({
       id: 'completed-yesterday',
       completed: true,
-      completedAt: '2026-08-13T14:00:00.000Z', // 上海 22:00
+      completedAt: new Date(2026, 7, 13, 22, 0).toISOString(),
     });
     const futureCompletedToday = task({
       id: 'future-completed',
       dueDate: '2026-08-15',
       completed: true,
-      completedAt: '2026-08-14T02:00:00.000Z',
+      completedAt: new Date(2026, 7, 14, 10, 0).toISOString(),
     });
 
     expect(selectTodayTasks([completedToday, completedYesterday, futureCompletedToday], NOW)
@@ -77,15 +77,14 @@ describe('Today 本地日期规则', () => {
   it('跨午夜后，前一天完成的任务自动移出 Today', () => {
     const completed = task({
       completed: true,
-      completedAt: '2026-08-14T15:59:00.000Z', // 上海 23:59
+      completedAt: new Date(2026, 7, 14, 23, 59).toISOString(),
     });
-    const nextDay = new Date('2026-08-15T00:01:00+08:00');
+    const nextDay = new Date(2026, 7, 15, 0, 1);
     expect(selectTodayTasks([completed], nextDay)).toEqual([]);
   });
 
   it('日期键使用浏览器本地时区，而不是 UTC 日期切片', () => {
-    const nearMidnight = new Date('2026-08-14T16:30:00.000Z');
-    // Test runner inherits Ubuntu's Asia/Shanghai local timezone.
+    const nearMidnight = new Date(2026, 7, 15, 0, 30);
     expect(toLocalDate(nearMidnight)).toBe('2026-08-15');
   });
 });
@@ -94,7 +93,7 @@ describe('Today 时长统计', () => {
   it('分别计算计划、已完成与剩余分钟数', () => {
     const tasks = [
       task({ estimatedMinutes: 40 }),
-      task({ estimatedMinutes: 30, completed: true, completedAt: '2026-08-14T02:00:00.000Z' }),
+      task({ estimatedMinutes: 30, completed: true, completedAt: new Date(2026, 7, 14, 10, 0).toISOString() }),
       task({ estimatedMinutes: 90, dueDate: '2026-08-15' }),
     ];
     expect(calculateTodayStats(tasks, NOW)).toEqual({
