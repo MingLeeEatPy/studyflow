@@ -8,8 +8,8 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run preview',
+    command: 'npm run build && npm run preview',
     port: 4173,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
   },
 })

@@ -22,11 +22,17 @@ case "${1:-dev}" in
   test)
     exec npm test
     ;;
+  typecheck)
+    exec npm run typecheck
+    ;;
   lint)
     exec npm run lint
     ;;
+  e2e)
+    exec npm run test:e2e
+    ;;
   *)
-    echo "用法：./studyflow.sh [dev|build|test|lint]" >&2
+    echo "用法：./studyflow.sh [dev|build|typecheck|test|lint|e2e]" >&2
     exit 2
     ;;
 esac

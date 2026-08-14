@@ -7,5 +7,14 @@ export type {
   TaskEventType,
   TaskSnapshot,
   UpdateTaskInput,
+  StudySession,
+  StudyInterval,
+  SessionRevision,
+  ExecutionSettings,
+  StartSessionInput,
+  FinishSessionInput,
+  SessionOutcome,
+  SessionStatus,
+  TimerMode,
+  PomodoroSettingsSnapshot,
 } from "../../shared/schemas/models";
-

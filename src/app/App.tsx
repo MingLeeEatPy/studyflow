@@ -1,70 +1,98 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { BookOpen, CalendarCheck, Database, LayoutGrid, Tags } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { BookOpen, CalendarCheck, Database, History, LayoutGrid, Play, Settings, Tags } from "lucide-react";
 import type { Category, CreateTaskInput, Task } from "../domain/models";
+import type { ExecutionSettings, FinishSessionInput, StartContext, StartSessionInput, StudyInterval, StudySession, TimerMode } from "../features/executionTypes";
+import { executionAdapter } from "../features/executionAdapter";
+import { intervalActiveMs, totalFocusMs } from "../domain/execution";
 import { studyFlowApi } from "../features/api";
-import { TodayPage } from "../pages/TodayPage";
-import { PlanPage } from "../pages/PlanPage";
-import { CategoriesPage } from "../pages/CategoriesPage";
-import { TaskForm } from "../components/TaskForm";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { Modal } from "../components/Modal";
+import { TodayPage } from "../pages/TodayPage"; import { PlanPage } from "../pages/PlanPage"; import { CategoriesPage } from "../pages/CategoriesPage"; import { FocusPage } from "../pages/FocusPage"; import { HistoryPage } from "../pages/HistoryPage"; import { ExecutionSettingsPage } from "../pages/ExecutionSettingsPage";
+import { TaskForm } from "../components/TaskForm"; import { ConfirmDialog } from "../components/ConfirmDialog"; import { Modal } from "../components/Modal"; import { StartSessionModal } from "../components/StartSessionModal"; import { ActiveSessionBar } from "../components/ActiveSessionBar"; import { FinishSessionModal } from "../components/FinishSessionModal"; import { SessionCorrectionModal } from "../components/SessionCorrectionModal"; import { SleepGapDialog } from "../components/SleepGapDialog";
 import { backupSchema } from "../../shared/schemas/backup";
 
-type Page = "today" | "plan" | "categories";
-type DeleteTarget = { type: "task"; item: Task } | { type: "category"; item: Category };
-
-function downloadJson(data: unknown, prefix = "studyflow-backup") {
-  const date = new Date();
-  const local = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `${prefix}-${local}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+type Page="today"|"plan"|"categories"|"history"|"settings"|"focus"; type DeleteTarget={type:"task";item:Task}|{type:"category";item:Category};
+function downloadJson(data:unknown,prefix="studyflow-backup"){const d=new Date(),local=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`,url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download=`${prefix}-${local}.json`;a.click();URL.revokeObjectURL(url)}
+export default function App(){
+ const [page,setPage]=useState<Page>("today"),[lastPage,setLastPage]=useState<Page>("today"),[tasks,setTasks]=useState<Task[]>([]),[categories,setCategories]=useState<Category[]>([]),[sessions,setSessions]=useState<StudySession[]>([]),[active,setActive]=useState<StudySession|null>(null),[intervals,setIntervals]=useState<StudyInterval[]>([]),[sessionDurations,setSessionDurations]=useState<Record<string,number>>({}),[settings,setSettings]=useState<ExecutionSettings|null>(null),[now,setNow]=useState(Date.now()),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[finishOpen,setFinishOpen]=useState(false),[startContext,setStartContext]=useState<StartContext|null>(null),[correcting,setCorrecting]=useState<StudySession|null>(null),[editingTask,setEditingTask]=useState<Task|null|undefined>(undefined),[deleteTarget,setDeleteTarget]=useState<DeleteTarget|null>(null),[backupOpen,setBackupOpen]=useState(false),[pendingImport,setPendingImport]=useState<unknown|null>(null); const fileRef=useRef<HTMLInputElement>(null),channelRef=useRef<BroadcastChannel|null>(null),boundaryRevision=useRef<number|null>(null),estimateNotified=useRef<string|null>(null),refreshRequest=useRef(0),activeRef=useRef<StudySession|null>(null),hasUnresolvedRef=useRef(false);
+ const heartbeatWall=useRef(Date.now()),heartbeatMonotonic=useRef(performance.now());
+ const refresh=useCallback(async()=>{const request=++refreshRequest.current,[nextTasks,nextCategories,nextActive,nextHistory,nextSettings]=await Promise.all([studyFlowApi.tasks.list(),studyFlowApi.categories.list(),executionAdapter.getActive(),executionAdapter.history(),executionAdapter.getSettings()]);const nextIntervals=nextActive?await executionAdapter.listIntervals(nextActive.id):[],historyIntervals=await Promise.all(nextHistory.map(item=>executionAdapter.listIntervals(item.id)));if(request!==refreshRequest.current)return;setTasks(nextTasks);setCategories(nextCategories);setActive(nextActive);setIntervals(nextIntervals);setSessionDurations(Object.fromEntries(nextHistory.map((item,index)=>[item.id,Math.floor(totalFocusMs(historyIntervals[index])/1000)])));setSessions(nextHistory);setSettings(nextSettings)},[]);
+ const mutate=useCallback(async(action:()=>Promise<StudySession|null|undefined>)=>{try{const value=await action();setActive(value??null);await refresh();channelRef.current?.postMessage("changed")}catch(e){setError(e instanceof Error?e.message:"操作失败");await refresh()}},[refresh]);
+ const notifyStage=useCallback((message:string)=>{if(settings?.soundEnabled&&"AudioContext" in window)try{const audio=new AudioContext(),osc=audio.createOscillator(),gain=audio.createGain();osc.connect(gain);gain.connect(audio.destination);gain.gain.value=.05;osc.onended=()=>void audio.close();osc.start();osc.stop(audio.currentTime+.18)}catch{/* 浏览器阻止自动播放时仅保留页面提醒 */}if(settings?.notificationsEnabled&&"Notification" in window&&Notification.permission==="granted")try{new Notification("StudyFlow",{body:message})}catch{/* 通知失败不影响计时 */}},[settings]);
+ useEffect(()=>{void refresh().catch(e=>setError(e instanceof Error?e.message:"读取本地数据失败")).finally(()=>setLoading(false))},[refresh]);
+ useEffect(()=>{void navigator.storage?.persist?.().catch(()=>false)},[]);
+ useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer)},[]);
+ useEffect(()=>{const channel=new BroadcastChannel("studyflow-execution");channelRef.current=channel;channel.onmessage=()=>void refresh();return()=>{channel.close();channelRef.current=null}},[refresh]);
+ useEffect(()=>{const guard=(e:BeforeUnloadEvent)=>{if(active){e.preventDefault();e.returnValue=""}};window.addEventListener("beforeunload",guard);return()=>window.removeEventListener("beforeunload",guard)},[active]);
+ useEffect(()=>{if(backupOpen)fileRef.current?.setAttribute("aria-label","导入备份文件")},[backupOpen]);
+ const activeInterval=active?intervals.find(item=>item.id===active.activeIntervalId):undefined,focusSeconds=Math.floor(totalFocusMs(intervals,new Date(now).toISOString())/1000),phaseElapsed=activeInterval?Math.floor(intervalActiveMs(activeInterval,new Date(now).toISOString())/1000):0,displaySeconds=active?.mode==="pomodoro"&&activeInterval?.targetSeconds?Math.max(0,activeInterval.targetSeconds-phaseElapsed):focusSeconds,estimateReached=Boolean(active?.mode==="stopwatch"&&active.estimatedMinutesSnapshot&&focusSeconds>=active.estimatedMinutesSnapshot*60),continuousRunningSeconds=active?.status==="running"?Math.max(0,Math.floor((now-Date.parse(active.updatedAt))/1000)):0;
+ const unresolved=intervals.flatMap(interval=>interval.sleepGaps.map((gap,index)=>({interval,gap,index}))).find(item=>item.gap.resolution===null);
+ activeRef.current=active;hasUnresolvedRef.current=Boolean(unresolved);
+ useEffect(()=>{let expected=Date.now()+1_000;const check=()=>{const wall=Date.now(),monotonic=performance.now(),wallGap=wall-heartbeatWall.current,callbackDelay=wall-expected,drift=wallGap-(monotonic-heartbeatMonotonic.current),from=new Date(heartbeatWall.current).toISOString(),current=activeRef.current;expected=wall+1_000;heartbeatWall.current=wall;heartbeatMonotonic.current=monotonic;const visibleJump=document.visibilityState==="visible"&&(wallGap>15_000||callbackDelay>15_000);if(current?.status==="running"&&!hasUnresolvedRef.current&&(visibleJump||drift>15_000))void mutate(()=>executionAdapter.reportSleepGap(current,from,new Date(wall).toISOString()))};const onVisibilityChange=()=>{if(document.visibilityState==="visible")check()};const timer=window.setInterval(check,1_000);window.addEventListener("focus",check);document.addEventListener("visibilitychange",onVisibilityChange);return()=>{clearInterval(timer);window.removeEventListener("focus",check);document.removeEventListener("visibilitychange",onVisibilityChange)}},[mutate]);
+ useEffect(()=>{if(!active||active.status!=="running"||boundaryRevision.current===active.revision)return;if(active.mode==="pomodoro"&&activeInterval?.targetSeconds&&phaseElapsed>=activeInterval.targetSeconds){boundaryRevision.current=active.revision;void mutate(()=>executionAdapter.completeStage(active)).then(()=>notifyStage("本阶段已结束"));return}if(active.mode==="stopwatch"&&settings&&continuousRunningSeconds>=settings.stopwatchAutoPauseMinutes*60){boundaryRevision.current=active.revision;void mutate(()=>executionAdapter.autoPause(active)).then(()=>notifyStage("正计时已自动暂停"))}},[active,activeInterval,phaseElapsed,continuousRunningSeconds,settings,mutate,notifyStage]);
+ useEffect(()=>{if(active&&estimateReached&&estimateNotified.current!==active.id){estimateNotified.current=active.id;notifyStage("已达到任务预计时长");setNotice("已达到任务预计时长，计时仍在继续")}},[active,estimateReached,notifyStage]);
+ async function start(mode:TimerMode,input:StartSessionInput){const value=await executionAdapter.start(mode,input);heartbeatWall.current=Date.parse(value.startedAt);heartbeatMonotonic.current=performance.now();setActive(value);setIntervals(await executionAdapter.listIntervals(value.id));setStartContext(null);setLastPage(page);setPage("focus");channelRef.current?.postMessage("changed")}
+ async function finish(input:FinishSessionInput){if(!active)return;const saved=await executionAdapter.finish(active,input);setFinishOpen(false);setActive(null);setPage(lastPage==="focus"?"today":lastPage);await refresh();channelRef.current?.postMessage("changed");setNotice(saved?"学习记录已保存":"有效专注不足 1 分钟，本次记录已丢弃")}
+ async function saveTask(input:CreateTaskInput){if(editingTask)await studyFlowApi.tasks.update(editingTask.id,input);else await studyFlowApi.tasks.create(input);await refresh()}
+ async function toggle(task:Task){await studyFlowApi.tasks.toggleComplete(task.id);await refresh()}
+ async function confirmDelete(){if(!deleteTarget)return;try{if(deleteTarget.type==="task")await studyFlowApi.tasks.archive(deleteTarget.item.id);else await studyFlowApi.categories.archive(deleteTarget.item.id);setDeleteTarget(null);await refresh()}catch(e){setError(e instanceof Error?e.message:"删除失败")}}
+ async function exportData(prefix?:string){downloadJson(await studyFlowApi.backup.exportData(),prefix);await refresh();channelRef.current?.postMessage("changed");setNotice("备份已导出")}
+ async function selectImport(event:ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];event.target.value="";if(!file)return;try{setPendingImport(backupSchema.parse(JSON.parse(await file.text())));setBackupOpen(false)}catch{setError("无效的备份文件：格式或版本不受支持")}}
+ async function confirmImport(){if(!pendingImport)return;try{downloadJson(await studyFlowApi.backup.exportData(),"studyflow-safety-backup");await studyFlowApi.backup.replaceAll(pendingImport);setPendingImport(null);await refresh();channelRef.current?.postMessage("changed");setNotice("导入成功")}catch(cause){setError(cause instanceof Error?cause.message:"导入失败，当前数据未改变")}}
+ function navigate(next:Page){if(page==="focus")setLastPage(next);setPage(next)}
+ if(loading)return <div className="loading-screen">
+<BookOpen/>
+<p>正在打开 StudyFlow…</p>
+</div>;
+ if(page==="focus"&&active)return <>
+{error&&<div className="focus-alert alert error" role="alert"><span>{error}</span><button onClick={()=>setError("")}>×</button></div>}
+<FocusPage session={active} activeInterval={activeInterval} settings={settings} seconds={displaySeconds} estimateReached={estimateReached} onLeave={()=>setPage(lastPage)} onPause={()=>void mutate(()=>executionAdapter.pause(active))} onResume={()=>void mutate(()=>executionAdapter.resume(active))} onAdvance={action=>void mutate(()=>executionAdapter.advance(active,action))} onFinish={()=>setFinishOpen(true)}/>{finishOpen&&<FinishSessionModal session={active} focusSeconds={focusSeconds} onClose={()=>setFinishOpen(false)} onFinish={finish}/>} {unresolved&&<SleepGapDialog session={active} gapSeconds={Math.max(0,(Date.parse(unresolved.gap.to)-Date.parse(unresolved.gap.from))/1000)} onResolve={async(resolution,correctedSeconds)=>{await mutate(()=>executionAdapter.resolveSleepGap(active,{intervalId:unresolved.interval.id,gapIndex:unresolved.index,resolution,correctedSeconds}))}}/>}</>;
+ return <div className={`app-shell${active?" has-session":""}`}>
+<aside className="sidebar">
+<div className="brand">
+<span>
+<BookOpen/>
+</span>
+<div>
+<strong>StudyFlow</strong>
+<small>计划 · 执行 · 记录</small>
+</div>
+</div>
+<nav aria-label="主导航">
+<Nav active={page==="today"} icon={<CalendarCheck/>} label="Today" onClick={()=>navigate("today")}/>
+<Nav active={page==="plan"} icon={<LayoutGrid/>} label="Plan" onClick={()=>navigate("plan")}/>
+<Nav active={page==="history"} icon={<History/>} label="History" onClick={()=>navigate("history")}/>
+<Nav active={page==="categories"} icon={<Tags/>} label="Categories" onClick={()=>navigate("categories")}/>
+<Nav active={page==="settings"} icon={<Settings/>} label="专注设置" onClick={()=>navigate("settings")}/>
+</nav>
+<button className="quick-start" onClick={()=>setStartContext({})}>
+<Play/>开始学习</button>
+<button className="data-button" onClick={()=>setBackupOpen(true)}>
+<Database/>数据管理</button>
+</aside>
+<main className="main-content">{error&&<div className="alert error" role="alert">
+<span>{error}</span>
+<button onClick={()=>setError("")}>×</button>
+</div>}{notice&&<div className="toast" role="status">
+<span>{notice}</span>
+<button onClick={()=>setNotice("")}>×</button>
+</div>}{page==="today"&&<TodayPage tasks={tasks} categories={categories} sessions={sessions} sessionDurations={sessionDurations} now={now} onToggle={task=>void toggle(task)} onEdit={setEditingTask} onDelete={item=>setDeleteTarget({type:"task",item})} onNew={()=>setEditingTask(null)} onStart={task=>setStartContext({task})}/>} {page==="plan"&&<PlanPage tasks={tasks} categories={categories} onToggle={task=>void toggle(task)} onEdit={setEditingTask} onDelete={item=>setDeleteTarget({type:"task",item})} onNew={()=>setEditingTask(null)} onStart={task=>setStartContext({task})}/>} {page==="categories"&&<CategoriesPage tasks={tasks} categories={categories} onCreate={async name=>{await studyFlowApi.categories.create({name});await refresh()}} onUpdate={async(id,name)=>{await studyFlowApi.categories.update(id,{name});await refresh()}} onDelete={item=>setDeleteTarget({type:"category",item})}/>} {page==="history"&&<HistoryPage sessions={sessions} durations={sessionDurations} tasks={tasks} categories={categories} onRefresh={()=>void refresh()} onCorrect={setCorrecting}/>} {page==="settings"&&<ExecutionSettingsPage settings={settings} onSave={async value=>{const next=await executionAdapter.saveSettings(value);setSettings(next);channelRef.current?.postMessage("changed");if(next.notificationsEnabled&&"Notification" in window&&Notification.permission==="default")try{await Notification.requestPermission()}catch{/* 权限请求失败不影响已保存设置 */}}}/>}</main>{active&&<ActiveSessionBar session={active} seconds={focusSeconds} onFocus={()=>{setLastPage(page);setPage("focus")}} onPause={()=>void mutate(()=>executionAdapter.pause(active))} onResume={()=>void mutate(()=>executionAdapter.resume(active))} onFinish={()=>setFinishOpen(true)}/>} {startContext&&<StartSessionModal context={startContext} tasks={tasks} categories={categories} onClose={()=>setStartContext(null)} onStart={start}/>} {finishOpen&&active&&<FinishSessionModal session={active} focusSeconds={focusSeconds} onClose={()=>setFinishOpen(false)} onFinish={finish}/>} {unresolved&&active&&<SleepGapDialog session={active} gapSeconds={Math.max(0,(Date.parse(unresolved.gap.to)-Date.parse(unresolved.gap.from))/1000)} onResolve={async(resolution,correctedSeconds)=>{await mutate(()=>executionAdapter.resolveSleepGap(active,{intervalId:unresolved.interval.id,gapIndex:unresolved.index,resolution,correctedSeconds}))}}/>} {correcting&&<SessionCorrectionModal session={correcting} onClose={()=>setCorrecting(null)} onSave={async input=>{await executionAdapter.correct(correcting,input);setCorrecting(null);await refresh();channelRef.current?.postMessage("changed");setNotice("修正已保存，原始值已进入审计记录")}}/>} {editingTask!==undefined&&<TaskForm categories={categories} task={editingTask??undefined} onSubmit={saveTask} onClose={()=>setEditingTask(undefined)}/>} {deleteTarget&&<ConfirmDialog title={deleteTarget.type==="task"?"删除任务":"删除分类"} message="删除后不可在当前计划中恢复，但历史记录会保留。" onConfirm={()=>void confirmDelete()} onClose={()=>setDeleteTarget(null)}/>} {backupOpen&&<Modal title="数据管理" onClose={()=>setBackupOpen(false)}>
+<div className="backup-panel">
+<section>
+<h3>导出完整备份</h3>
+<p>保存计划和执行记录。</p>
+<button className="button secondary" onClick={()=>void exportData()}>导出全部数据</button>
+</section>
+<section>
+<h3>覆盖导入</h3>
+<input ref={fileRef} hidden type="file" accept=".json" aria-label="导入备份文件" onChange={e=>void selectImport(e)}/>
+<button className="button secondary" onClick={()=>fileRef.current?.click()}>选择备份文件</button>
+</section>
+</div>
+</Modal>} {pendingImport!==null&&<Modal title="覆盖导入" onClose={()=>setPendingImport(null)}>
+<p>当前数据将先自动备份，再被文件内容覆盖。</p>
+<footer className="modal-actions">
+<button className="button secondary" onClick={()=>setPendingImport(null)}>取消</button>
+<button className="button danger" onClick={()=>void confirmImport()}>确认覆盖导入</button>
+</footer>
+</Modal>}</div>;
 }
-
-export default function App() {
-  const [page, setPage] = useState<Page>("today");
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [editingTask, setEditingTask] = useState<Task | null | undefined>(undefined);
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [backupOpen, setBackupOpen] = useState(false);
-  const [pendingImport, setPendingImport] = useState<unknown | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const refresh = useCallback(async () => {
-    const [nextTasks, nextCategories] = await Promise.all([studyFlowApi.tasks.list(), studyFlowApi.categories.list()]);
-    setTasks(nextTasks); setCategories(nextCategories);
-  }, []);
-  useEffect(() => { refresh().catch((reason) => setError(reason instanceof Error ? reason.message : "读取本地数据失败")).finally(() => setLoading(false)); }, [refresh]);
-  async function saveTask(input: CreateTaskInput) { if (editingTask) await studyFlowApi.tasks.update(editingTask.id, input); else await studyFlowApi.tasks.create(input); await refresh(); }
-  async function toggle(task: Task) { try { await studyFlowApi.tasks.toggleComplete(task.id); await refresh(); } catch (reason) { setError(reason instanceof Error ? reason.message : "更新失败"); } }
-  async function confirmDelete() { if (!deleteTarget) return; setDeleting(true); try { if (deleteTarget.type === "task") await studyFlowApi.tasks.archive(deleteTarget.item.id); else await studyFlowApi.categories.archive(deleteTarget.item.id); setDeleteTarget(null); await refresh(); } catch (reason) { setError(reason instanceof Error ? reason.message : "删除失败"); setDeleteTarget(null); } finally { setDeleting(false); } }
-  async function exportData(prefix?: string) { try { downloadJson(await studyFlowApi.backup.exportData(), prefix); setNotice("备份已导出"); } catch (reason) { setError(reason instanceof Error ? reason.message : "导出失败"); } }
-  async function selectImport(event: ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; try { const parsed: unknown = JSON.parse(await file.text()); setPendingImport(backupSchema.parse(parsed)); setBackupOpen(false); setError(""); } catch { setError("无效的备份文件：格式或版本不受支持"); } }
-  async function confirmImport() { if (!pendingImport) return; try { downloadJson(await studyFlowApi.backup.exportData(), "studyflow-safety-backup"); await studyFlowApi.backup.replaceAll(pendingImport); setPendingImport(null); setBackupOpen(false); await refresh(); setNotice("导入成功，当前数据已被备份内容覆盖"); } catch (reason) { setError(reason instanceof Error ? reason.message : "导入失败，当前数据未改变"); } }
-
-  if (loading) return <div className="loading-screen"><BookOpen /><p>正在打开 StudyFlow…</p></div>;
-  return <div className="app-shell">
-    <aside className="sidebar"><div className="brand"><span><BookOpen /></span><div><strong>StudyFlow</strong><small>学习计划助手</small></div></div><nav aria-label="主导航">
-      <a href="#today" className={page === "today" ? "active" : ""} onClick={(e) => { e.preventDefault(); setPage("today"); }}><CalendarCheck />Today</a>
-      <a href="#plan" className={page === "plan" ? "active" : ""} onClick={(e) => { e.preventDefault(); setPage("plan"); }}><LayoutGrid />Plan</a>
-      <a href="#categories" className={page === "categories" ? "active" : ""} onClick={(e) => { e.preventDefault(); setPage("categories"); }}><Tags />Categories</a>
-    </nav><button className="data-button" onClick={() => setBackupOpen(true)}><Database />数据管理</button><div className="sidebar-note"><strong>数据仅保存在本机</strong><span>建议定期导出备份，避免浏览器数据被清理后丢失。</span></div></aside>
-    <main className="main-content">{error && <div className="alert error" role="alert"><span>{error}</span><button onClick={() => setError("")}>×</button></div>}{notice && <div className="toast" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
-      {page === "today" && <TodayPage tasks={tasks} categories={categories} onToggle={toggle} onEdit={setEditingTask} onDelete={(item) => setDeleteTarget({ type: "task", item })} onNew={() => setEditingTask(null)} />}
-      {page === "plan" && <PlanPage tasks={tasks} categories={categories} onToggle={toggle} onEdit={setEditingTask} onDelete={(item) => setDeleteTarget({ type: "task", item })} onNew={() => setEditingTask(null)} />}
-      {page === "categories" && <CategoriesPage tasks={tasks} categories={categories} onCreate={async (name) => { await studyFlowApi.categories.create({ name }); await refresh(); }} onUpdate={async (id, name) => { await studyFlowApi.categories.update(id, { name }); await refresh(); }} onDelete={(item) => setDeleteTarget({ type: "category", item })} />}
-    </main>
-    {editingTask !== undefined && <TaskForm categories={categories} task={editingTask ?? undefined} onSubmit={saveTask} onClose={() => setEditingTask(undefined)} />}
-    {deleteTarget && <ConfirmDialog title={deleteTarget.type === "task" ? "删除任务" : "删除分类"} message={deleteTarget.type === "task" ? `“${deleteTarget.item.title}”将从计划中移除，但历史记录仍会保留。` : `确定删除分类“${deleteTarget.item.name}”吗？正在使用的分类不能删除。`} busy={deleting} onConfirm={() => void confirmDelete()} onClose={() => setDeleteTarget(null)} />}
-    {backupOpen && <Modal title="数据管理" onClose={() => setBackupOpen(false)}><div className="backup-panel"><section><h3>导出完整备份</h3><p>将任务、分类和历史事件保存为 JSON 文件。</p><button className="button secondary" onClick={() => void exportData()}>导出全部数据</button></section><section><h3>覆盖导入</h3><p>导入会替换当前数据。确认导入时，会先自动下载当前数据的安全备份。</p><input ref={fileRef} hidden type="file" accept="application/json,.json" aria-label="导入备份文件" onChange={(e) => void selectImport(e)} /><button className="button secondary" onClick={() => fileRef.current?.click()}>选择备份文件</button></section></div></Modal>}
-    {pendingImport !== null && <Modal title="覆盖导入" onClose={() => setPendingImport(null)}><p className="confirm-copy">备份中的内容将替换当前全部数据。StudyFlow 会先自动下载当前数据的安全备份。</p><footer className="modal-actions"><button className="button secondary" onClick={() => setPendingImport(null)}>取消</button><button className="button danger" onClick={() => void confirmImport()}>确认覆盖导入</button></footer></Modal>}
-  </div>;
-}
+function Nav({active,icon,label,onClick}:{active:boolean;icon:ReactNode;label:string;onClick:()=>void}){return <a href={`#${label}`} className={active?"active":""} onClick={e=>{e.preventDefault();onClick()}}>{icon}{label}</a>}

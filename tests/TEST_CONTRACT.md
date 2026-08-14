@@ -27,3 +27,32 @@ E2E（端到端）测试依赖稳定的可访问名称，包括表单 `label`、
 - Playwright 将系统时间固定为 `2026-08-14`，否则 Today 测试应动态生成本地日期。
 - 每个 E2E 测试使用独立 browser context，并可靠等待 `deleteDatabase` 完成。
 - 导入 E2E 应使用实现导出的真实 fixture，避免测试 fixture 和 schema 分叉。
+
+## StudyFlow V2 Execution 验收契约
+
+### Today 与累计投入
+
+- `Today` 的实际专注时间必须按 `StudyInterval` 的有效专注区间计算，不得用 `endedAt - startedAt`；暂停、休息以及被排除的休眠区间均不计入。
+- 跨本地午夜的区间应根据 `StudySession.timezone` 分摊到两个本地日期。Today 只显示当天所占秒数，不能把整条会话归到开始日。
+- Today 必须同时显示今日实际专注、今日完成任务数以及当前进行中的会话。
+- 任务卡必须显示该任务全部已完成会话的累计实际投入；临时会话不能计入任一任务。
+
+### History 与可审计修正
+
+- History 支持日期、分类、任务和结果四类筛选。日期按会话记录的时区解释，禁止直接使用 UTC 字符串的日期前缀。
+- 修正结果、原因、总结、备注和时间线时都必须填写修正原因。
+- 时间线修正 UI 至少能调整 focus 区间的开始/结束时间和暂停区间；保存后立即刷新有效时长。
+- 每次修正必须新增 `SessionRevision`，其 `before`/`after` 同时包含 session 与 intervals，不允许无审计覆盖。
+
+### 番茄组与时间跳跃
+
+- 第 4 轮专注后使用长休息设置；长休结束后必须让用户明确选择“继续下一组”或“结束学习”，不能无提示直接进入第 5 轮。
+- 应比较连续 tick 的真实 wall-clock 差值来检测系统休眠；即使页面始终 visible，也应在明显跳跃后进入 `sleep-review`。
+- 普通切换标签页不应仅因隐藏 15 秒就被判定为电脑休眠；检测阈值与判断依据必须避免高频误报。
+
+### 多标签页同步
+
+- 同一 browser context 的两个标签页共享唯一活动会话。
+- start、pause、resume、Pomodoro phase、sleep resolution、finish、correction、settings update 和 import 后均应广播刷新。
+- 广播消息只用于通知；接收页必须从 IndexedDB 重新读取权威状态。
+- 两个标签页同时以同一 revision 修改时，最多一个成功；另一个应收到可恢复的 conflict 错误并刷新。
