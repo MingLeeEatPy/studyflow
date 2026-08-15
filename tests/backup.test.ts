@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { StudyFlowDatabase } from '../src/db/database';
 import { BackupRepository } from '../src/db/backupRepository';
+import { SessionRepository } from '../src/db/sessionRepository';
 
 describe('完整导出与覆盖导入', () => {
   let db: StudyFlowDatabase;
@@ -13,12 +14,15 @@ describe('完整导出与覆盖导入', () => {
   });
   afterEach(async () => db.delete());
 
-  it('导出包含格式、版本、时间以及分类/任务/事件', async () => {
+  it('V2 导出包含计划数据、执行数据和设置', async () => {
     const backup = await backups.exportData();
     expect(backup).toMatchObject({
       format: 'studyflow-backup',
-      version: 1,
-      data: { tasks: [], taskEvents: [] },
+      version: 2,
+      data: {
+        tasks: [], taskEvents: [], studySessions: [], studyIntervals: [], sessionRevisions: [],
+        executionSettings: { focusMinutes: 25, stopwatchAutoPauseMinutes: 240 },
+      },
     });
     expect(backup.data.categories).toHaveLength(5);
   });
@@ -52,6 +56,59 @@ describe('完整导出与覆盖导入', () => {
     expect(categoryId).not.toBe('new-category');
     await backups.replaceAll(backup);
     expect((await db.categories.toArray()).map((item) => item.id)).toEqual(['new-category']);
+  });
+
+  it('兼容导入 V1 备份，并自动补齐空执行记录和默认设置', async () => {
+    const timestamp = '2026-08-14T00:00:00.000Z';
+    await backups.replaceAll({
+      format: 'studyflow-backup', version: 1, exportedAt: timestamp,
+      data: {
+        categories: [{ id: 'legacy-category', name: '旧分类', sortOrder: 0, archivedAt: null,
+          createdAt: timestamp, updatedAt: timestamp }],
+        tasks: [], taskEvents: [],
+      },
+    });
+    const upgraded = await backups.exportData();
+    expect(upgraded).toMatchObject({
+      version: 2,
+      data: {
+        studySessions: [], studyIntervals: [], sessionRevisions: [],
+        executionSettings: { focusMinutes: 25, roundsPerSet: 4 },
+      },
+    });
+  });
+
+  it('V2 执行会话和区间可完整导出并覆盖恢复', async () => {
+    const category = (await db.categories.orderBy('sortOrder').first())!;
+    let now = new Date('2026-08-14T00:00:00.000Z');
+    let sequence = 0;
+    const sessions = new SessionRepository(db, () => new Date(now), () => `backup-id-${++sequence}`);
+    const started = await sessions.startStopwatch({
+      categoryId: category.id, title: '备份执行记录', timezone: 'Asia/Shanghai',
+    });
+    now = new Date('2026-08-14T00:01:01.000Z');
+    await sessions.finish(started.id, { outcome: 'completed' }, started.revision);
+    const exported = await backups.exportData();
+    expect(exported.data.studySessions).toHaveLength(1);
+    expect(exported.data.studyIntervals).toHaveLength(1);
+
+    await db.studySessions.clear();
+    await db.studyIntervals.clear();
+    await backups.replaceAll(exported);
+    expect(await db.studySessions.get(started.id)).toMatchObject({ outcome: 'completed' });
+    expect(await db.studyIntervals.where('sessionId').equals(started.id).count()).toBe(1);
+  });
+
+  it('导出运行中的会话前自动暂停，并把暂停状态写入备份和数据库', async () => {
+    const category = (await db.categories.orderBy('sortOrder').first())!;
+    const sessions = new SessionRepository(db, () => new Date('2026-08-14T00:05:00.000Z'));
+    const started = await sessions.startStopwatch({
+      categoryId: category.id, title: '导出时暂停', timezone: 'Asia/Shanghai',
+    });
+    const exported = await backups.exportData();
+    expect(exported.data.studySessions[0]).toMatchObject({ id: started.id, status: 'paused', revision: 1 });
+    expect(await db.studySessions.get(started.id)).toMatchObject({ status: 'paused', revision: 1 });
+    expect(exported.data.studyIntervals[0].pauses).toHaveLength(1);
   });
 
   it('任何写入失败都回滚，避免只导入一部分表', async () => {

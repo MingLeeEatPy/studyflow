@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-test('导出后可覆盖导入，并在确认前自动下载当前安全备份', async ({ page }) => {
+test('导出后可覆盖导入、自动安全备份并同步其他标签页', async ({ page, context }) => {
   await page.goto('/');
+  const other = await context.newPage();
+  await other.goto('/');
+  await other.getByRole('link', { name: 'Categories' }).click();
+  await expect(other.getByRole('heading', { name: '导入分类' })).toHaveCount(0);
   await page.getByRole('button', { name: '数据管理' }).click();
 
   const exportDownload = page.waitForEvent('download');
@@ -13,7 +17,7 @@ test('导出后可覆盖导入，并在确认前自动下载当前安全备份',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
       format: 'studyflow-backup', version: 1, exportedAt: new Date().toISOString(),
-      data: { categories: [{ id: 'other', name: '其他', sortOrder: 0, archivedAt: null,
+      data: { categories: [{ id: 'imported', name: '导入分类', sortOrder: 0, archivedAt: null,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }], tasks: [], taskEvents: [] },
     })),
   });
@@ -23,6 +27,7 @@ test('导出后可覆盖导入，并在确认前自动下载当前安全备份',
   await page.getByRole('button', { name: '确认覆盖导入' }).click();
   await safetyDownload;
   await expect(page.getByRole('status')).toContainText('导入成功');
+  await expect(other.getByRole('heading', { name: '导入分类' })).toBeVisible();
 });
 
 test('无效文件不触发确认，也不改变当前数据', async ({ page }) => {
