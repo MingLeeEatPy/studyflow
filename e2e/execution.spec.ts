@@ -78,6 +78,30 @@ test("番茄钟到时后等待确认，再进入休息阶段", async ({ page }) 
   await expect(page.getByRole("button", { name: "开始下一轮" })).toBeVisible();
 });
 
+test("开始时可独立设置番茄参数，Focus 修改从下一阶段生效", async ({ page }) => {
+  await openAtFixedTime(page);
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("学习名称").fill("独立番茄设置测试");
+  await page.getByRole("radio", { name: /番茄钟/ }).check();
+  await expect(page.getByLabel("本次专注时长")).toHaveValue("25");
+  await page.getByLabel("本次专注时长").fill("1");
+  await page.getByLabel("本次短休息").fill("1");
+  await page.getByRole("button", { name: "进入 Focus" }).click();
+  await expect(page.getByText("目标 1 分钟")).toBeVisible();
+
+  await page.getByRole("button", { name: "调整本次番茄设置" }).click();
+  await page.getByLabel("后续专注时长").fill("3");
+  await page.getByLabel("后续短休息").fill("2");
+  await page.getByRole("button", { name: "保存本次设置" }).click();
+  await expect(page.getByText("目标 1 分钟")).toBeVisible();
+
+  await page.clock.runFor(61_000);
+  await page.getByRole("button", { name: "开始休息" }).click();
+  await expect(page.getByText("目标 2 分钟")).toBeVisible();
+  await page.getByRole("button", { name: "跳过休息" }).click();
+  await expect(page.getByText("目标 3 分钟")).toBeVisible();
+});
+
 test("正计时达到任务预计时长后只提示并继续计时", async ({ page }) => {
   await openAtFixedTime(page);
   await page.getByRole("link", { name: "Plan" }).click();

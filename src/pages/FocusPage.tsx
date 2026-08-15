@@ -1,8 +1,8 @@
-import { ArrowLeft, Coffee, Pause, Play, Square } from "lucide-react";
+import { ArrowLeft, Coffee, Pause, Play, Settings2, Square } from "lucide-react";
 import type { ExecutionSettings, StudyInterval, StudySession } from "../features/executionTypes";
 import { formatDuration } from "../features/executionAdapter";
 
-export function FocusPage({ session, activeInterval, settings, seconds, estimateReached, onLeave, onPause, onResume, onAdvance, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onFinish: () => void }) {
+export function FocusPage({ session, activeInterval, settings, seconds, estimateReached, onLeave, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
   const paused = session.status === "paused"; const awaiting = session.status === "awaiting-confirmation";
   const isBreak = activeInterval?.kind === "break";
   const setComplete = isBreak && session.pomodoroRound % (session.pomodoroSettingsSnapshot?.roundsPerSet ?? settings?.roundsPerSet ?? 4) === 0;
@@ -27,7 +27,7 @@ export function FocusPage({ session, activeInterval, settings, seconds, estimate
 <button className="button focus-secondary" onClick={() => onAdvance("skip-break")}>跳过休息</button>
 </> : <><button className="button focus-primary" onClick={paused ? onResume : onPause}>{paused ? <Play /> : <Pause />}{paused ? "继续" : "暂停"}</button>{isBreak&&!paused&&<button className="button focus-secondary" onClick={()=>onAdvance("skip-break")}>跳过休息</button>}</>}<button className="button focus-secondary" onClick={onFinish}>
 <Square />结束学习</button>
-</div>
+</div>{session.mode === "pomodoro" && <button className="focus-settings" onClick={onEditPomodoro}><Settings2 />调整本次番茄设置</button>}
 </section>
 <footer>
 <span>离开 Focus 页面不会停止计时</span>

@@ -103,6 +103,34 @@ describe("V2 学习会话 Repository", () => {
       .toEqual(["focus", "break", "focus"]);
   });
 
+  it("每条番茄会话可覆盖默认设置，运行中修改只影响后续阶段", async () => {
+    const category = (await db.categories.orderBy("sortOrder").first())!;
+    const settings = new SettingsRepository(db, clock);
+    const started = await sessions.startPomodoro({
+      categoryId: category.id, title: "45 分钟高数", timezone: "Asia/Shanghai",
+      pomodoroSettings: { focusMinutes: 45, shortBreakMinutes: 5, longBreakMinutes: 10, roundsPerSet: 3 },
+    });
+    expect(started.pomodoroSettingsSnapshot).toEqual({
+      focusMinutes: 45, shortBreakMinutes: 5, longBreakMinutes: 10, roundsPerSet: 3,
+    });
+    const firstInterval = (await sessions.listIntervals(started.id))[0];
+    expect(firstInterval.targetSeconds).toBe(45 * 60);
+    expect((await settings.getExecutionSettings()).focusMinutes).toBe(25);
+
+    const updated = await sessions.updatePomodoroSettings(started.id, {
+      focusMinutes: 30, shortBreakMinutes: 8, longBreakMinutes: 20, roundsPerSet: 4,
+    }, started.revision);
+    expect((await sessions.listIntervals(started.id))[0].targetSeconds).toBe(45 * 60);
+    await expect(sessions.updatePomodoroSettings(started.id, {
+      focusMinutes: 20, shortBreakMinutes: 5, longBreakMinutes: 15, roundsPerSet: 4,
+    }, started.revision)).rejects.toThrow(/其他标签页|更新/);
+
+    advance(45 * 60_000);
+    const focusDone = await sessions.completeCurrentStage(updated.id, updated.revision);
+    const onBreak = await sessions.advancePomodoro(updated.id, "start-break", focusDone.revision);
+    expect((await sessions.listIntervals(onBreak.id)).at(-1)?.targetSeconds).toBe(8 * 60);
+  });
+
   it("运行中的番茄休息可以跳过并直接开始下一轮专注", async () => {
     const category = (await db.categories.orderBy("sortOrder").first())!;
     const started = await sessions.startPomodoro({

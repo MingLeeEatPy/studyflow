@@ -188,6 +188,7 @@ export const startSessionInputSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   goal: z.string().trim().max(500).default(""),
   timezone: z.string().min(1),
+  pomodoroSettings: pomodoroSettingsSnapshotSchema.optional(),
 });
 
 export const finishSessionInputSchema = z.object({

@@ -1,4 +1,4 @@
-import type { ExecutionSettings, FinishSessionInput, StartSessionInput, StudySession } from "../../shared/schemas/models";
+import type { ExecutionSettings, FinishSessionInput, PomodoroSettingsSnapshot, StartSessionInput, StudySession } from "../../shared/schemas/models";
 import type { HistoryFilter, SessionCorrectionInput } from "./executionTypes";
 import { studyFlowApi } from "./api";
 function changed<T>(operation:Promise<T>):Promise<T>{return operation.then(value=>{if(typeof BroadcastChannel!=="undefined"){const channel=new BroadcastChannel("studyflow-execution");channel.postMessage("changed");setTimeout(()=>channel.close(),100)}return value})}
@@ -7,6 +7,7 @@ export const executionAdapter={
  start:(mode:"stopwatch"|"pomodoro",input:StartSessionInput)=>changed(mode==="stopwatch"?studyFlowApi.sessions.startStopwatch(input):studyFlowApi.sessions.startPomodoro(input)),
  pause:(value:StudySession)=>changed(studyFlowApi.sessions.pause(value.id,value.revision)),resume:(value:StudySession)=>changed(studyFlowApi.sessions.resume(value.id,value.revision)),
  advance:(value:StudySession,action:"start-break"|"skip-break"|"start-focus")=>changed(studyFlowApi.sessions.advancePomodoro(value.id,action,value.revision)),
+ updatePomodoroSettings:(value:StudySession,input:PomodoroSettingsSnapshot)=>changed(studyFlowApi.sessions.updatePomodoroSettings(value.id,input,value.revision)),
  completeStage:(value:StudySession)=>changed(studyFlowApi.sessions.completeCurrentStage(value.id,value.revision)),autoPause:(value:StudySession)=>changed(studyFlowApi.sessions.autoPauseIfNeeded(value.id,value.revision)),
  reportSleepGap:(value:StudySession,from:string,to:string)=>changed(studyFlowApi.sessions.reportSleepGap(value.id,from,to,value.revision)),
  finish:(value:StudySession,input:FinishSessionInput)=>changed(studyFlowApi.sessions.finish(value.id,input,value.revision)),discard:(id:string)=>changed(studyFlowApi.sessions.discard(id)),history:(filter?:HistoryFilter)=>studyFlowApi.sessions.listHistory(filter),

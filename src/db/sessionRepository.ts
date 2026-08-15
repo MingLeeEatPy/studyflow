@@ -1,6 +1,6 @@
 import {
-  finishSessionInputSchema, startSessionInputSchema, studyIntervalSchema, studySessionSchema,
-  type FinishSessionInput, type SessionOutcome, type StartSessionInput, type StudyInterval, type StudySession,
+  finishSessionInputSchema, pomodoroSettingsSnapshotSchema, startSessionInputSchema, studyIntervalSchema, studySessionSchema,
+  type FinishSessionInput, type PomodoroSettingsSnapshot, type SessionOutcome, type StartSessionInput, type StudyInterval, type StudySession,
 } from "../../shared/schemas/models";
 import { hasUnresolvedSleepGap, totalFocusMs } from "../domain/execution";
 import { ConflictError, NotFoundError } from "./errors";
@@ -37,20 +37,21 @@ export class SessionRepository {
       if (!task && !value.title) throw new ConflictError("临时学习记录必须填写标题");
       const now = this.clock().toISOString();
       const settings = await this.database.executionSettings.get("default");
+      const pomodoroSettings = mode === "pomodoro" ? pomodoroSettingsSnapshotSchema.parse(value.pomodoroSettings ?? {
+        focusMinutes: settings?.focusMinutes ?? 25, shortBreakMinutes: settings?.shortBreakMinutes ?? 5,
+        longBreakMinutes: settings?.longBreakMinutes ?? 15, roundsPerSet: settings?.roundsPerSet ?? 4,
+      }) : null;
       const sessionId = this.createId();
       const interval = studyIntervalSchema.parse({
         id: this.createId(), sessionId, kind: "focus", pomodoroRound: mode === "pomodoro" ? 1 : null,
-        targetSeconds: mode === "pomodoro" ? (settings?.focusMinutes ?? 25) * 60 : null,
+        targetSeconds: pomodoroSettings ? pomodoroSettings.focusMinutes * 60 : null,
         startedAt: now, endedAt: null, pauses: [], sleepGaps: [], createdAt: now, updatedAt: now,
       });
       const session = studySessionSchema.parse({
         id: sessionId, taskId: task?.id ?? null, categoryId: category.id,
         taskTitleSnapshot: task?.title ?? value.title, categoryNameSnapshot: category.name,
         estimatedMinutesSnapshot: task?.estimatedMinutes ?? null, goal: value.goal,
-        mode, pomodoroSettingsSnapshot: mode === "pomodoro" ? {
-          focusMinutes: settings?.focusMinutes ?? 25, shortBreakMinutes: settings?.shortBreakMinutes ?? 5,
-          longBreakMinutes: settings?.longBreakMinutes ?? 15, roundsPerSet: settings?.roundsPerSet ?? 4,
-        } : null, status: "running", activeIntervalId: interval.id, pomodoroRound: 1,
+        mode, pomodoroSettingsSnapshot: pomodoroSettings, status: "running", activeIntervalId: interval.id, pomodoroRound: 1,
         startedAt: now, endedAt: null, timezone: value.timezone, outcome: null,
         failureReason: null, note: "", summary: "", revision: 0, createdAt: now, updatedAt: now,
       });
@@ -66,6 +67,22 @@ export class SessionRepository {
 
   async listIntervals(sessionId: string): Promise<StudyInterval[]> {
     return this.database.studyIntervals.where("sessionId").equals(sessionId).sortBy("startedAt");
+  }
+
+  async updatePomodoroSettings(id: string, input: PomodoroSettingsSnapshot, expectedRevision?: number): Promise<StudySession> {
+    const settings = pomodoroSettingsSnapshotSchema.parse(input);
+    return this.database.transaction("rw", this.database.studySessions, async () => {
+      const session = await this.requireSession(id);
+      this.checkRevision(session, expectedRevision);
+      if (session.status === "finished") throw new ConflictError("已结束的会话不能修改番茄设置");
+      if (session.mode !== "pomodoro") throw new ConflictError("当前会话不是番茄钟");
+      const now = this.clock().toISOString();
+      const updated = studySessionSchema.parse({
+        ...session, pomodoroSettingsSnapshot: settings, revision: session.revision + 1, updatedAt: now,
+      });
+      await this.database.studySessions.put(updated);
+      return updated;
+    });
   }
 
   async pause(id: string, expectedRevision?: number): Promise<StudySession> {
