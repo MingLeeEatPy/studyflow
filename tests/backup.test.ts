@@ -78,6 +78,17 @@ describe('完整导出与覆盖导入', () => {
     });
   });
 
+  it('兼容缺少音量字段的早期 V2 备份并补齐默认音量', async () => {
+    const exported = await backups.exportData();
+    const legacySettings: Record<string, unknown> = { ...exported.data.executionSettings };
+    delete legacySettings.soundVolume;
+    await backups.replaceAll({
+      ...exported,
+      data: { ...exported.data, executionSettings: legacySettings },
+    });
+    expect((await backups.exportData()).data.executionSettings.soundVolume).toBe(80);
+  });
+
   it('V2 执行会话和区间可完整导出并覆盖恢复', async () => {
     const category = (await db.categories.orderBy('sortOrder').first())!;
     let now = new Date('2026-08-14T00:00:00.000Z');

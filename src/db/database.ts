@@ -60,7 +60,7 @@ export class StudyFlowDatabase extends Dexie {
 export function defaultExecutionSettings(at = nowIso()): ExecutionSettings {
   return {
     id: "default", focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15,
-    roundsPerSet: 4, soundEnabled: true, notificationsEnabled: false,
+    roundsPerSet: 4, soundEnabled: true, soundVolume: 80, notificationsEnabled: false,
     stopwatchAutoPauseMinutes: 240, updatedAt: at,
   };
 }

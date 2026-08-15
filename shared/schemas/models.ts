@@ -87,7 +87,7 @@ export const sleepGapSchema = z.object({
   to: isoDateTimeSchema,
   resolution: z.enum(["include", "exclude", "correct"]).nullable(),
   correctedSeconds: z.number().int().nonnegative().nullable(),
-  resumeStatus: z.enum(["running", "paused"]),
+  resumeStatus: z.enum(["running", "paused", "awaiting-confirmation"]),
 }).superRefine((value, ctx) => {
   const durationSeconds = (Date.parse(value.to) - Date.parse(value.from)) / 1000;
   if (durationSeconds < 0) ctx.addIssue({ code: "custom", path: ["to"], message: "休眠结束时间不能早于开始时间" });
@@ -177,6 +177,7 @@ export const executionSettingsSchema = z.object({
   longBreakMinutes: z.number().int().min(1).max(120),
   roundsPerSet: z.number().int().min(1).max(12),
   soundEnabled: z.boolean(),
+  soundVolume: z.number().int().min(10).max(100).default(80),
   notificationsEnabled: z.boolean(),
   stopwatchAutoPauseMinutes: z.number().int().min(60).max(1440),
   updatedAt: isoDateTimeSchema,

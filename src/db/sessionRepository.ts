@@ -121,6 +121,10 @@ export class SessionRepository {
         return { ...session, status: "running", activeIntervalId: next.id, pomodoroRound: round };
       }
       if (session.status !== "awaiting-confirmation") throw new ConflictError("当前番茄阶段尚未等待确认");
+      if (!interval.endedAt) {
+        interval.endedAt = now; interval.updatedAt = now;
+        await this.database.studyIntervals.put(studyIntervalSchema.parse(interval));
+      }
       let kind: "focus" | "break";
       let round = session.pomodoroRound;
       if (interval.kind === "focus") {
@@ -144,8 +148,12 @@ export class SessionRepository {
   async completeCurrentStage(id: string, expectedRevision?: number): Promise<StudySession> {
     return this.mutateActive(id, expectedRevision, async (session, interval, now) => {
       if (session.mode !== "pomodoro" || session.status !== "running") throw new ConflictError("当前阶段不能结束");
-      interval.endedAt = now; interval.updatedAt = now;
-      await this.database.studyIntervals.put(studyIntervalSchema.parse(interval));
+      // 专注到时后继续开放该区间，以正计时记录用户尚未开始休息的超时时间。
+      // 休息到时则正常关闭，等待用户确认下一轮。
+      if (interval.kind === "break") {
+        interval.endedAt = now; interval.updatedAt = now;
+        await this.database.studyIntervals.put(studyIntervalSchema.parse(interval));
+      }
       return { ...session, status: "awaiting-confirmation", activeIntervalId: interval.id };
     });
   }
@@ -153,7 +161,7 @@ export class SessionRepository {
   async reportSleepGap(id: string, from: string, to: string, expectedRevision?: number): Promise<StudySession> {
     return this.mutateActive(id, expectedRevision, async (session, interval, now) => {
       interval.sleepGaps.push({ detectedAt: now, from, to, resolution: null, correctedSeconds: null,
-        resumeStatus: session.status === "paused" ? "paused" : "running" });
+        resumeStatus: session.status === "paused" ? "paused" : session.status === "awaiting-confirmation" ? "awaiting-confirmation" : "running" });
       interval.updatedAt = now; await this.database.studyIntervals.put(studyIntervalSchema.parse(interval));
       return { ...session, status: "sleep-review" };
     });
