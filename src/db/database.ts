@@ -1,5 +1,16 @@
 import Dexie, { type Table } from "dexie";
-import type { Category, ExecutionSettings, SessionRevision, StudyInterval, StudySession, Task, TaskEvent } from "../domain/models";
+import type {
+  Category,
+  ExecutionSettings,
+  GrowthRecord,
+  MeditationInterval,
+  MeditationSession,
+  SessionRevision,
+  StudyInterval,
+  StudySession,
+  Task,
+  TaskEvent,
+} from "../domain/models";
 
 export const DEFAULT_CATEGORY_NAMES = ["高数", "线性代数", "C", "CS50", "其他"] as const;
 
@@ -19,6 +30,9 @@ export class StudyFlowDatabase extends Dexie {
   studyIntervals!: Table<StudyInterval, string>;
   sessionRevisions!: Table<SessionRevision, string>;
   executionSettings!: Table<ExecutionSettings, string>;
+  growthRecords!: Table<GrowthRecord, string>;
+  meditationSessions!: Table<MeditationSession, string>;
+  meditationIntervals!: Table<MeditationInterval, string>;
 
   constructor(name = "StudyFlow") {
     super(name);
@@ -38,6 +52,18 @@ export class StudyFlowDatabase extends Dexie {
     }).upgrade(async (tx) => {
       const table = tx.table<ExecutionSettings, string>("executionSettings");
       await table.put(defaultExecutionSettings());
+    });
+    this.version(3).stores({
+      tasks: "id, categoryId, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt",
+      executionSettings: "id",
+      growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
+      meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
+      meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
     });
 
     this.on("populate", () => {

@@ -297,6 +297,57 @@ textarea:focus-visible {
   line-height: 1.65;
 }
 
+.today-garden-card {
+  justify-content: flex-start;
+}
+
+.today-garden {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.today-garden article {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 7px 4px 5px;
+  border: 1px solid rgba(82, 119, 100, .09);
+  border-radius: 14px;
+  background: rgba(249, 251, 248, .62);
+}
+
+.today-garden .plant-illustration {
+  width: 58px;
+  height: 58px;
+}
+
+.today-garden article > span {
+  width: 100%;
+  overflow: hidden;
+  color: #5d6c63;
+  font-size: 9px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-garden-empty {
+  width: 112px;
+  height: 94px;
+  margin: 15px auto 0;
+  opacity: .68;
+}
+
+.today-garden-more {
+  margin-top: 8px;
+  color: #5d6c63;
+  font-size: 10px;
+  text-align: right;
+}
+
 .today-rest-mark {
   position: relative;
   height: 67px;

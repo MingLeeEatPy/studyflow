@@ -2,8 +2,9 @@ import { ArrowLeft, Coffee, Pause, Play, Settings2, Square } from "lucide-react"
 import type { ExecutionSettings, StudyInterval, StudySession } from "../features/executionTypes";
 import { formatDuration } from "../features/executionAdapter";
 import { PlantIllustration } from "../components/PlantIllustration";
+import type { GrowthStage } from "../domain/growth";
 
-export function FocusPage({ session, activeInterval, settings, seconds, overtime = false, estimateReached, onLeave, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; overtime?: boolean; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
+export function FocusPage({ session, activeInterval, settings, seconds, growthStage, growthVariant, overtime = false, estimateReached, onLeave, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; growthStage: GrowthStage; growthVariant: number; overtime?: boolean; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
   const paused = session.status === "paused"; const awaiting = session.status === "awaiting-confirmation";
   const isBreak = activeInterval?.kind === "break";
   const setComplete = isBreak && session.pomodoroRound % (session.pomodoroSettingsSnapshot?.roundsPerSet ?? settings?.roundsPerSet ?? 4) === 0;
@@ -20,7 +21,7 @@ export function FocusPage({ session, activeInterval, settings, seconds, overtime
 </header>
 <section className="focus-center">
 <div className="focus-ambient" aria-hidden="true" />
-<div className={`focus-botanical${paused ? " paused" : ""}${overtime ? " overtime" : ""}`} aria-hidden="true"><PlantIllustration kind="tree" stage={3} variant={0} overtime={overtime}/></div>
+<div className={`focus-botanical${paused ? " paused" : ""}${overtime ? " overtime" : ""}`} aria-hidden="true"><PlantIllustration kind="tree" stage={growthStage} variant={growthVariant} overtime={overtime}/></div>
 <div className="focus-glass-panel">
 <div className="focus-panel-meta"><span>{isBreak ? "休息阶段" : session.mode === "pomodoro" ? `第 ${session.pomodoroRound} 轮` : "自由专注"}</span><span>{session.categoryNameSnapshot}</span></div>
 <h1>{session.taskTitleSnapshot}</h1>

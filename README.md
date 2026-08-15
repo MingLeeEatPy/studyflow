@@ -8,7 +8,7 @@
 http://127.0.0.1:5173/?design-preview=1
 ```
 
-样板使用本地假数据，不读取或写入 StudyFlow 的 IndexedDB。Today、Plan、Focus、Meditation 和成长阶段仅用于设计确认；正式界面会在样板确认后分阶段接入。
+样板使用本地假数据，不读取或写入 StudyFlow 的 IndexedDB。Today、Plan、Focus 和学习成长树已经分阶段接入正式界面；样板中的 Meditation 仍只用于下一阶段设计参照。
 
 StudyFlow 是一个 Web-first 的个人学习计划与执行助手。V2 已形成第一阶段的 `Plan → Execute → Record`：先安排学习任务，再用正计时或番茄钟执行，并把实际投入和结果保存为可审计的本地记录。
 
@@ -29,7 +29,8 @@ StudyFlow 是一个 Web-first 的个人学习计划与执行助手。V2 已形�
 - 完成/部分完成/未完成、原因、总结和备注
 - History 日期/分类/任务/结果筛选，以及保留修改前后值的时间线修正
 - IndexedDB 本地持久化、`TaskEvent`、`StudyInterval` 和 `SessionRevision` 历史
-- V2 完整 JSON 备份、V1 备份兼容导入和覆盖导入前安全备份
+- V3 完整 JSON 备份、V1/V2 备份兼容导入和覆盖导入前安全备份
+- 学习会话驱动的五阶段成长树与 Today 花园（不会补生成升级前的历史植物）
 
 ## 启动
 

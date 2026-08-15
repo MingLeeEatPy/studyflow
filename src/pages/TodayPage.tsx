@@ -3,17 +3,26 @@ import type { Category, Task } from "../domain/models";
 import { calculateTodayStats, selectTodayTasks } from "../domain/today";
 import { TaskCard } from "../components/TaskCard";
 import type { StudySession } from "../features/executionTypes";
+import type { GrowthRecord } from "../../shared/schemas/models";
 import { executionAdapter } from "../features/executionAdapter";
 import { sessionFocusSecondsOnLocalDate, totalFocusMs } from "../domain/execution";
+import { calculateGrowthStage, type GrowthStage } from "../domain/growth";
+import { PlantIllustration } from "../components/PlantIllustration";
 
-export function TodayPage({ tasks, categories, sessions = [], taskActualMinutes = {}, activeSession, now = Date.now(), onToggle, onEdit, onDelete, onNew, onStart }: { tasks: Task[]; categories: Category[]; sessions?: StudySession[]; sessionDurations?: Record<string,number>; taskActualMinutes?: Record<string,number>; activeSession?: StudySession | null; now?: number; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void }) {
-  const [execution, setExecution] = useState<{ actualSeconds: number; taskMinutes: Record<string, number>; active: StudySession | null }>({ actualSeconds: 0, taskMinutes: taskActualMinutes, active: activeSession ?? null });
+interface GardenPlant {
+  record: GrowthRecord;
+  stage: GrowthStage;
+  label: string;
+}
+
+export function TodayPage({ tasks, categories, sessions = [], growthRecords = [], taskActualMinutes = {}, activeSession, now = Date.now(), onToggle, onEdit, onDelete, onNew, onStart }: { tasks: Task[]; categories: Category[]; sessions?: StudySession[]; growthRecords?: GrowthRecord[]; sessionDurations?: Record<string,number>; taskActualMinutes?: Record<string,number>; activeSession?: StudySession | null; now?: number; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void }) {
+  const [execution, setExecution] = useState<{ actualSeconds: number; taskMinutes: Record<string, number>; active: StudySession | null; garden: GardenPlant[]; gardenTotal: number }>({ actualSeconds: 0, taskMinutes: taskActualMinutes, active: activeSession ?? null, garden: [], gardenTotal: 0 });
   const todayTasks = selectTodayTasks(tasks);
   const stats = calculateTodayStats(tasks);
   const categoryMap = new Map(categories.map((item) => [item.id, item]));
   const localToday = new Date().toLocaleDateString("en-CA");
   const minuteTick = Math.floor(now / 60_000);
-  useEffect(() => { let cancelled = false; void (async () => { const active = await executionAdapter.getActive(); const history = sessions.length ? sessions : await executionAdapter.history(); const all = active ? [...history, active] : history; const intervalGroups = await Promise.all(all.map((item) => executionAdapter.listIntervals(item.id))); const actualSeconds = all.reduce((sum, item, index) => sum + sessionFocusSecondsOnLocalDate(item, intervalGroups[index], localToday), 0); const taskSeconds: Record<string, number> = {}; all.forEach((item, index) => { if (item.taskId) taskSeconds[item.taskId] = (taskSeconds[item.taskId] ?? 0) + totalFocusMs(intervalGroups[index]) / 1000; }); if (!cancelled) setExecution({ actualSeconds, taskMinutes: Object.fromEntries(Object.entries(taskSeconds).map(([id, seconds]) => [id, Math.round(seconds / 60)])), active }); })(); return () => { cancelled = true; }; }, [sessions, localToday, minuteTick]);
+  useEffect(() => { let cancelled = false; void (async () => { const active = await executionAdapter.getActive(); const history = sessions.length ? sessions : await executionAdapter.history(); const all = active ? [...history, active] : history; const intervalGroups = await Promise.all(all.map((item) => executionAdapter.listIntervals(item.id))); const actualSeconds = all.reduce((sum, item, index) => sum + sessionFocusSecondsOnLocalDate(item, intervalGroups[index], localToday), 0); const taskSeconds: Record<string, number> = {}; all.forEach((item, index) => { if (item.taskId) taskSeconds[item.taskId] = (taskSeconds[item.taskId] ?? 0) + totalFocusMs(intervalGroups[index]) / 1000; }); const sessionIndex = new Map(all.map((item, index) => [item.id, { session: item, intervals: intervalGroups[index] }])); const gardenCandidates = growthRecords.filter((record) => record.localDate === localToday).flatMap((record): GardenPlant[] => { if (record.sourceType !== "study") return []; const source = sessionIndex.get(record.sourceSessionId); if (!source) return []; return [{ record, stage: calculateGrowthStage(totalFocusMs(source.intervals) / 1000, record.targetSecondsSnapshot), label: source.session.taskTitleSnapshot }]; }); if (!cancelled) setExecution({ actualSeconds, taskMinutes: Object.fromEntries(Object.entries(taskSeconds).map(([id, seconds]) => [id, Math.round(seconds / 60)])), active, garden: gardenCandidates.slice(0, 8), gardenTotal: gardenCandidates.length }); })(); return () => { cancelled = true; }; }, [sessions, growthRecords, localToday, minuteTick]);
   const actualMinutes = Math.round(execution.actualSeconds / 60);
   const pendingCount = todayTasks.filter((item) => !item.completed).length;
   const completedCount = todayTasks.length - pendingCount;
@@ -31,9 +40,11 @@ export function TodayPage({ tasks, categories, sessions = [], taskActualMinutes 
           <article className="stat-card completed-count"><span>完成任务</span><strong>{completedCount}</strong><small>/ {todayTasks.length}</small></article>
         </div>
       </article>
-      <aside className="today-rhythm-card">
-        <div><span className="today-rhythm-label">当前节奏</span><h2>{execution.active ? "保持此刻的专注" : pendingCount ? "准备好，就从一件事开始" : "今天可以安心收尾"}</h2><p>{execution.active ? "离开页面不会停止计时，按照自己的节奏继续。" : pendingCount ? `还有 ${pendingCount} 项任务等待完成。` : "所有今日任务都已处理。"}</p></div>
-        {execution.active ? <div className="today-active"><span className="today-active-dot"/><span><small>正在学习</small><strong>{execution.active.taskTitleSnapshot}</strong></span><b>{execution.active.mode === "pomodoro" ? `第 ${execution.active.pomodoroRound} 轮` : "正计时"}</b></div> : <div className="today-rest-mark" aria-hidden="true"><span/><span/><span/></div>}
+      <aside className="today-rhythm-card today-garden-card">
+        <div><span className="today-rhythm-label">今日花园</span><h2>{execution.gardenTotal ? `今天长出了 ${execution.gardenTotal} 株植物` : "专注会在这里留下痕迹"}</h2><p>{execution.gardenTotal ? "每一株都对应一段真实投入的时间。" : "完成至少 1 分钟的学习，种下今天的第一棵树。"}</p></div>
+        {execution.garden.length ? <div className="today-garden" role="list" aria-label="今日成长植物">{execution.garden.map(({ record, stage, label }) => <article key={record.id} role="listitem" title={label}><PlantIllustration kind={record.plantType} stage={stage} variant={record.variant}/><span>{label}</span></article>)}</div> : <div className="today-garden-empty" aria-hidden="true"><PlantIllustration kind="tree" stage={0} variant={0}/></div>}
+        {execution.gardenTotal > 8 && <small className="today-garden-more">另有 {execution.gardenTotal - 8} 株植物</small>}
+        {execution.active && <div className="today-active"><span className="today-active-dot"/><span><small>正在学习</small><strong>{execution.active.taskTitleSnapshot}</strong></span><b>{execution.active.mode === "pomodoro" ? `第 ${execution.active.pomodoroRound} 轮` : "正计时"}</b></div>}
       </aside>
     </section>
     <section className="section-heading today-list-heading"><div><h2>今日任务</h2><p>{pendingCount} 项待完成 · {completedCount} 项已完成</p></div></section>

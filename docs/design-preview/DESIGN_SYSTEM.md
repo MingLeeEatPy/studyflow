@@ -1,6 +1,6 @@
 # StudyFlow「自然沉浸与正念成长」视觉设计系统
 
-状态：视觉方向已确认，第二阶段已将设计 token 与 Today、Plan、Focus 接入正式页面。该目录中的 `?design-preview=1` 截图仍使用假数据；成长记录、今日花园和 Meditation 尚未接入正式数据。
+状态：视觉方向已确认，第二阶段已将设计 token 与 Today、Plan、Focus 接入正式页面；第三阶段已接入学习成长记录、Focus 实时树和 Today 花园。该目录中的 `?design-preview=1` 仍使用完全隔离的假数据；Meditation 正式流程留在下一 Batch。
 
 ## 1. 设计原则
 
@@ -111,7 +111,7 @@ Today / 侧边栏 / 快速开始
 当前已完成设计确认样板和第 1 项正式视觉改造，后续依次实施：
 
 1. ~~正式视觉 token 与 Today / Plan / Focus 改造~~
-2. IndexedDB version 3、备份 version 3、成长记录与今日花园
-3. Meditation 数据层、完整流程、History 类型隔离
+2. IndexedDB version 3、备份 version 3、成长记录与今日花园（已完成）
+3. Meditation 数据层、完整流程、History 类型隔离（下一 Batch）
 
 每阶段单独验收，禁止在视觉改造阶段顺带修改正式数据模型。

@@ -6,3 +6,4 @@ export { ConflictError, DataError, NotFoundError } from "./errors";
 export { sessionRepository, SessionRepository } from "./sessionRepository";
 export type { PomodoroAdvanceAction, HistoryFilter, SleepGapResolution, SessionCorrection } from "./sessionRepository";
 export { settingsRepository, SettingsRepository } from "./settingsRepository";
+export { growthRepository, GrowthRepository } from "./growthRepository";

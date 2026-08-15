@@ -1,8 +1,19 @@
 import { z } from "zod";
-import { categorySchema, executionSettingsSchema, sessionRevisionSchema, studyIntervalSchema, studySessionSchema, taskEventSchema, taskSchema } from "./models";
+import {
+  categorySchema,
+  executionSettingsSchema,
+  growthRecordSchema,
+  meditationIntervalSchema,
+  meditationSessionSchema,
+  sessionRevisionSchema,
+  studyIntervalSchema,
+  studySessionSchema,
+  taskEventSchema,
+  taskSchema,
+} from "./models";
 
 export const BACKUP_FORMAT = "studyflow-backup" as const;
-export const BACKUP_VERSION = 2 as const;
+export const BACKUP_VERSION = 3 as const;
 
 const commonDataSchema = z.object({
   tasks: z.array(taskSchema), categories: z.array(categorySchema).min(1, "备份必须至少包含一个分类"), taskEvents: z.array(taskEventSchema),
@@ -18,6 +29,15 @@ export const backupV2Schema = z.object({
   data: commonDataSchema.extend({ studySessions: z.array(studySessionSchema), studyIntervals: z.array(studyIntervalSchema),
     sessionRevisions: z.array(sessionRevisionSchema), executionSettings: executionSettingsSchema }),
 });
-export const backupSchema = z.discriminatedUnion("version", [backupV1Schema, backupV2Schema]);
-export type StudyFlowBackup = z.infer<typeof backupV2Schema>;
+export const backupV3Schema = z.object({
+  format: z.literal(BACKUP_FORMAT), version: z.literal(3), exportedAt: z.string().datetime({ offset: true }),
+  data: commonDataSchema.extend({
+    studySessions: z.array(studySessionSchema), studyIntervals: z.array(studyIntervalSchema),
+    sessionRevisions: z.array(sessionRevisionSchema), executionSettings: executionSettingsSchema,
+    growthRecords: z.array(growthRecordSchema), meditationSessions: z.array(meditationSessionSchema),
+    meditationIntervals: z.array(meditationIntervalSchema),
+  }),
+});
+export const backupSchema = z.discriminatedUnion("version", [backupV1Schema, backupV2Schema, backupV3Schema]);
+export type StudyFlowBackup = z.infer<typeof backupV3Schema>;
 export type CompatibleStudyFlowBackup = z.infer<typeof backupSchema>;
