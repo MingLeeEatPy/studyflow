@@ -4,7 +4,7 @@
 
 ## Focus 雾林
 
-输出：`src/assets/design-preview/focus-forest.webp`
+输出：`src/assets/nature/focus-forest.webp`
 
 ```text
 Use case: photorealistic-natural
@@ -21,7 +21,7 @@ Avoid: neon green, bright sun, fantasy glow, dramatic landscape, colorful flower
 
 ## Meditation 晨雾水面
 
-输出：`src/assets/design-preview/meditation-water.webp`
+输出：`src/assets/nature/meditation-water.webp`
 
 ```text
 Use case: photorealistic-natural

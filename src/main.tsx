@@ -9,7 +9,7 @@ if (isDesignPreview) {
     root.render(<StrictMode><DesignPreviewApp /></StrictMode>);
   });
 } else {
-  void Promise.all([import("./app/App"), import("./styles/global.css")]).then(([{ default: App }]) => {
+  void Promise.all([import("./app/App"), import("./styles/global.css"), import("./styles/nature.css")]).then(([{ default: App }]) => {
     root.render(<StrictMode><App /></StrictMode>);
   });
 }

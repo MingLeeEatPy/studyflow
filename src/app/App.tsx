@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { BookOpen, CalendarCheck, Database, History, LayoutGrid, Play, Settings, Tags } from "lucide-react";
+import { BookOpen, CalendarCheck, Database, History, LayoutGrid, Leaf, Play, Settings, Tags } from "lucide-react";
 import type { Category, CreateTaskInput, Task } from "../domain/models";
 import type { ExecutionSettings, FinishSessionInput, StartContext, StartSessionInput, StudyInterval, StudySession, TimerMode } from "../features/executionTypes";
 import type { PomodoroSettingsSnapshot } from "../../shared/schemas/models";
@@ -53,7 +53,7 @@ export default function App(){
 <aside className="sidebar">
 <div className="brand">
 <span>
-<BookOpen/>
+<Leaf/>
 </span>
 <div>
 <strong>StudyFlow</strong>
@@ -72,7 +72,7 @@ export default function App(){
 <button className="data-button" onClick={()=>setBackupOpen(true)}>
 <Database/>数据管理</button>
 </aside>
-<main className="main-content">{error&&<div className="alert error" role="alert">
+<main className={`main-content page-${page}`}>{error&&<div className="alert error" role="alert">
 <span>{error}</span>
 <button onClick={()=>setError("")}>×</button>
 </div>}{notice&&<div className="toast" role="status">

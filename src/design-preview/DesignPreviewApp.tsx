@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BookOpen, CalendarDays, Check, ChevronRight, Clock3, Flower2, History, LayoutGrid, Leaf, Monitor, MoreHorizontal, Pause, Play, Plus, RotateCcw, Settings, Smartphone, Sparkles, Sprout, Timer, TreePine } from "lucide-react";
-import focusForest from "../assets/design-preview/focus-forest.webp";
-import meditationWater from "../assets/design-preview/meditation-water.webp";
-import { PlantIllustration } from "./PlantIllustration";
+import focusForest from "../assets/nature/focus-forest.webp";
+import meditationWater from "../assets/nature/meditation-water.webp";
+import { PlantIllustration } from "../components/PlantIllustration";
 import "./design-preview.css";
 
 type Screen = "today" | "plan" | "focus" | "meditation" | "growth";
