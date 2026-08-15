@@ -2,7 +2,7 @@ import { ArrowLeft, Coffee, Pause, Play, Settings2, Square } from "lucide-react"
 import type { ExecutionSettings, StudyInterval, StudySession } from "../features/executionTypes";
 import { formatDuration } from "../features/executionAdapter";
 
-export function FocusPage({ session, activeInterval, settings, seconds, estimateReached, onLeave, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
+export function FocusPage({ session, activeInterval, settings, seconds, overtime = false, estimateReached, onLeave, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; overtime?: boolean; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
   const paused = session.status === "paused"; const awaiting = session.status === "awaiting-confirmation";
   const isBreak = activeInterval?.kind === "break";
   const setComplete = isBreak && session.pomodoroRound % (session.pomodoroSettingsSnapshot?.roundsPerSet ?? settings?.roundsPerSet ?? 4) === 0;
@@ -14,9 +14,9 @@ export function FocusPage({ session, activeInterval, settings, seconds, estimate
 <span>{session.mode === "pomodoro" ? `POMODORO · ROUND ${session.pomodoroRound}` : "STOPWATCH"}</span>
 </header>
 <section className="focus-center">
-<div className={`focus-orbit${paused ? " paused" : ""}`}>
+<div className={`focus-orbit${paused ? " paused" : ""}${overtime ? " overtime" : ""}`}>
 <div>
-<span>{isBreak ? awaiting ? "休息结束" : paused ? "休息已暂停" : "休息" : awaiting ? "本阶段完成" : paused ? "已暂停" : "正在专注"}</span>
+<span>{isBreak ? awaiting ? "休息结束" : paused ? "休息已暂停" : "休息" : overtime ? "超时专注 · 正计时" : awaiting ? "本阶段完成" : paused ? "已暂停" : "正在专注"}</span>
 <time>{formatDuration(seconds)}</time>{target && <small>目标 {target} 分钟</small>}</div>
 </div>
 <p className="focus-category">{session.categoryNameSnapshot}</p>

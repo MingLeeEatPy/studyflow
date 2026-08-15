@@ -71,11 +71,32 @@ test("番茄钟到时后等待确认，再进入休息阶段", async ({ page }) 
   await page.getByRole("radio", { name: /番茄钟/ }).check();
   await page.getByRole("button", { name: "进入 Focus" }).click();
   await page.clock.runFor(61_000);
-  await expect(page.getByText("本阶段完成")).toBeVisible();
+  await expect(page.getByText("超时专注 · 正计时")).toBeVisible();
+  await expect(page.getByText("00:01", { exact: true })).toBeVisible();
+  await page.clock.runFor(4_000);
+  await expect(page.getByText("00:05", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "开始休息" }).click();
   await expect(page.getByText("休息", { exact: true })).toBeVisible();
   await page.clock.runFor(61_000);
   await expect(page.getByRole("button", { name: "开始下一轮" })).toBeVisible();
+});
+
+test("番茄专注到时会触发三声提示音", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (...args) {
+      sessionStorage.setItem("studyflow-test-tone-count", String(Number(sessionStorage.getItem("studyflow-test-tone-count") ?? "0") + 1));
+      return original.apply(this, args);
+    };
+  });
+  await openAtFixedTime(page);
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("学习名称").fill("到时声音测试");
+  await page.getByRole("radio", { name: /番茄钟/ }).check();
+  await page.getByLabel("本次专注时长").fill("1");
+  await page.getByRole("button", { name: "进入 Focus" }).click();
+  await page.clock.runFor(61_000);
+  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("studyflow-test-tone-count") ?? "0"))).toBe(3);
 });
 
 test("开始时可独立设置番茄参数，Focus 修改从下一阶段生效", async ({ page }) => {

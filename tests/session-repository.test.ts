@@ -103,6 +103,43 @@ describe("V2 学习会话 Repository", () => {
       .toEqual(["focus", "break", "focus"]);
   });
 
+  it("专注到时后保持区间开放并累计超时，开始休息时才关闭", async () => {
+    const category = (await db.categories.orderBy("sortOrder").first())!;
+    const started = await sessions.startPomodoro({
+      categoryId: category.id, title: "超时专注", timezone: "Asia/Shanghai",
+      pomodoroSettings: { focusMinutes: 1, shortBreakMinutes: 5, longBreakMinutes: 15, roundsPerSet: 4 },
+    });
+    advance(60_000);
+    const overtime = await sessions.completeCurrentStage(started.id, started.revision);
+    expect(overtime.status).toBe("awaiting-confirmation");
+    expect((await sessions.listIntervals(started.id))[0].endedAt).toBeNull();
+
+    advance(30_000);
+    const onBreak = await sessions.advancePomodoro(started.id, "start-break", overtime.revision);
+    const intervals = await sessions.listIntervals(started.id);
+    expect(intervals[0].endedAt).toBe("2026-08-14T00:01:30.000Z");
+    expect(intervals[1]).toMatchObject({ kind: "break", startedAt: "2026-08-14T00:01:30.000Z" });
+    expect(onBreak.status).toBe("running");
+  });
+
+  it("超时正计时发生休眠时，处理后恢复到等待休息状态", async () => {
+    const category = (await db.categories.orderBy("sortOrder").first())!;
+    const started = await sessions.startPomodoro({
+      categoryId: category.id, title: "超时休眠", timezone: "Asia/Shanghai",
+      pomodoroSettings: { focusMinutes: 1, shortBreakMinutes: 5, longBreakMinutes: 15, roundsPerSet: 4 },
+    });
+    advance(60_000);
+    const overtime = await sessions.completeCurrentStage(started.id, started.revision);
+    advance(30_000);
+    const reviewing = await sessions.reportSleepGap(
+      started.id, "2026-08-14T00:01:00.000Z", "2026-08-14T00:01:30.000Z", overtime.revision,
+    );
+    const resolved = await sessions.resolveSleepGap(started.id, {
+      intervalId: started.activeIntervalId!, gapIndex: 0, resolution: "exclude",
+    }, reviewing.revision);
+    expect(resolved.status).toBe("awaiting-confirmation");
+  });
+
   it("每条番茄会话可覆盖默认设置，运行中修改只影响后续阶段", async () => {
     const category = (await db.categories.orderBy("sortOrder").first())!;
     const settings = new SettingsRepository(db, clock);
