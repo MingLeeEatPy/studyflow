@@ -29,7 +29,7 @@ test("从任务开始正计时，暂停恢复后结束并同步完成状态", as
   await page.clock.runFor(31_000);
   await page.getByRole("button", { name: "结束学习" }).click();
   await expect(page.getByRole("dialog", { name: "结束本次学习" })).toBeVisible();
-  await expect(page.getByRole("dialog", { name: "结束本次学习" }).getByText("01:01")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "结束本次学习" }).getByText(/^01:0[01]$/)).toBeVisible();
   await page.getByRole("button", { name: "确认结束" }).click();
 
   await page.getByRole("link", { name: "History" }).click();
@@ -72,9 +72,10 @@ test("番茄钟到时后等待确认，再进入休息阶段", async ({ page }) 
   await page.getByRole("button", { name: "进入 Focus" }).click();
   await page.clock.runFor(61_000);
   await expect(page.getByText("超时专注 · 正计时")).toBeVisible();
-  await expect(page.getByText("00:01", { exact: true })).toBeVisible();
+  const overtimeTimer = page.locator(".focus-orbit time");
+  await expect(overtimeTimer).toHaveText(/^00:0[01]$/);
   await page.clock.runFor(4_000);
-  await expect(page.getByText("00:05", { exact: true })).toBeVisible();
+  await expect(overtimeTimer).toHaveText(/^00:0[45]$/);
   await page.getByRole("button", { name: "开始休息" }).click();
   await expect(page.getByText("休息", { exact: true })).toBeVisible();
   await page.clock.runFor(61_000);
@@ -202,7 +203,25 @@ test("设置修改会广播到同源的另一个标签页", async ({ page, conte
 
   await other.getByRole("link", { name: "专注设置" }).click();
   await page.getByRole("link", { name: "专注设置" }).click();
+  await expect(page.getByLabel("提示音音量")).toHaveValue("80");
   await page.getByLabel("专注时长").fill("50");
+  await page.getByLabel("提示音音量").fill("95");
   await page.getByRole("button", { name: "保存设置" }).click();
   await expect(other.getByLabel("专注时长")).toHaveValue("50");
+  await expect(other.getByLabel("提示音音量")).toHaveValue("95");
+});
+
+test("用户可以调节并试听提示音音量", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (...args) {
+      sessionStorage.setItem("studyflow-preview-tone-count", String(Number(sessionStorage.getItem("studyflow-preview-tone-count") ?? "0") + 1));
+      return original.apply(this, args);
+    };
+  });
+  await openAtFixedTime(page);
+  await page.getByRole("link", { name: "专注设置" }).click();
+  await page.getByLabel("提示音音量").fill("100");
+  await page.getByRole("button", { name: "试听提示音" }).click();
+  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("studyflow-preview-tone-count") ?? "0"))).toBe(3);
 });

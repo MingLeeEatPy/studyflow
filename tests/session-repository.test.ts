@@ -326,10 +326,12 @@ describe("V2 学习会话 Repository", () => {
     const settings = new SettingsRepository(db, clock);
     expect(await settings.getExecutionSettings()).toMatchObject({
       focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15,
-      roundsPerSet: 4, stopwatchAutoPauseMinutes: 240,
+      roundsPerSet: 4, soundVolume: 80, stopwatchAutoPauseMinutes: 240,
     });
     expect((await settings.updateExecutionSettings({ focusMinutes: 50 })).focusMinutes).toBe(50);
+    expect((await settings.updateExecutionSettings({ soundVolume: 100 })).soundVolume).toBe(100);
     await expect(settings.updateExecutionSettings({ focusMinutes: 0 })).rejects.toThrow();
+    await expect(settings.updateExecutionSettings({ soundVolume: 0 })).rejects.toThrow();
   });
 });
 
