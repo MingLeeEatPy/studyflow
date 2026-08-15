@@ -1,5 +1,15 @@
 # StudyFlow
 
+## 视觉设计样板
+
+当前的「自然沉浸与正念成长」视觉样板通过以下地址访问：
+
+```text
+http://127.0.0.1:5173/?design-preview=1
+```
+
+样板使用本地假数据，不读取或写入 StudyFlow 的 IndexedDB。Today、Plan、Focus、Meditation 和成长阶段仅用于设计确认；正式界面会在样板确认后分阶段接入。
+
 StudyFlow 是一个 Web-first 的个人学习计划与执行助手。V2 已形成第一阶段的 `Plan → Execute → Record`：先安排学习任务，再用正计时或番茄钟执行，并把实际投入和结果保存为可审计的本地记录。
 
 ## 主要功能
