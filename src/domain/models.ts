@@ -17,4 +17,13 @@ export type {
   SessionStatus,
   TimerMode,
   PomodoroSettingsSnapshot,
+  GrowthRecord,
+  GrowthSourceType,
+  PlantType,
+  MeditationSession,
+  MeditationInterval,
+  MeditationMode,
+  MeditationStatus,
+  MeditationIntention,
+  BreathingPattern,
 } from "../../shared/schemas/models";

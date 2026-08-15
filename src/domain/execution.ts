@@ -1,8 +1,10 @@
 import type { StudyInterval, StudySession } from "../../shared/schemas/models";
 
+type ActiveInterval = Pick<StudyInterval, "startedAt" | "endedAt" | "pauses" | "sleepGaps">;
+
 const ms = (value: string) => new Date(value).getTime();
 
-export function intervalActiveMs(interval: StudyInterval, until = new Date().toISOString()): number {
+export function intervalActiveMs(interval: ActiveInterval, until = new Date().toISOString()): number {
   const start = ms(interval.startedAt);
   const end = ms(interval.endedAt ?? until);
   const total = Math.max(0, end - start);

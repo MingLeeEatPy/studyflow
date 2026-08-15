@@ -3,6 +3,7 @@ import {
   type FinishSessionInput, type PomodoroSettingsSnapshot, type SessionOutcome, type StartSessionInput, type StudyInterval, type StudySession,
 } from "../../shared/schemas/models";
 import { hasUnresolvedSleepGap, totalFocusMs } from "../domain/execution";
+import { createStudyGrowthRecord } from "../domain/growth";
 import { ConflictError, NotFoundError } from "./errors";
 import { db, type StudyFlowDatabase } from "./database";
 import { taskRepository, TaskRepository } from "./taskRepository";
@@ -25,8 +26,11 @@ export class SessionRepository {
 
   private async start(input: StartSessionInput, mode: "stopwatch" | "pomodoro"): Promise<StudySession> {
     const value = startSessionInputSchema.parse(input);
-    return this.database.transaction("rw", this.database.studySessions, this.database.studyIntervals, this.database.tasks, this.database.categories, this.database.executionSettings, async () => {
-      if (await this.database.studySessions.where("status").anyOf("running", "paused", "awaiting-confirmation", "sleep-review").first()) {
+    return this.database.transaction("rw", [this.database.studySessions, this.database.studyIntervals, this.database.tasks,
+      this.database.categories, this.database.executionSettings, this.database.meditationSessions], async () => {
+      const activeStudy = await this.database.studySessions.where("status").anyOf("running", "paused", "awaiting-confirmation", "sleep-review").first();
+      const activeMeditation = await this.database.meditationSessions.where("status").anyOf("breathing", "running", "paused", "sleep-review").first();
+      if (activeStudy || activeMeditation) {
         throw new ConflictError("已有进行中的学习会话");
       }
       const category = await this.database.categories.get(value.categoryId);
@@ -189,7 +193,7 @@ export class SessionRepository {
   async finish(id: string, input: FinishSessionInput, expectedRevision?: number): Promise<StudySession | null> {
     const value = finishSessionInputSchema.parse(input);
     const now = this.clock().toISOString();
-    return this.database.transaction("rw", this.database.studySessions, this.database.studyIntervals, this.database.tasks, this.database.taskEvents, async () => {
+    return this.database.transaction("rw", this.database.studySessions, this.database.studyIntervals, this.database.tasks, this.database.taskEvents, this.database.growthRecords, async () => {
       const session = await this.requireSession(id);
       this.checkRevision(session, expectedRevision);
       if (session.status === "finished") throw new ConflictError("会话已结束");
@@ -215,6 +219,7 @@ export class SessionRepository {
         revision: session.revision + 1, updatedAt: now });
       if (current) await this.database.studyIntervals.put(studyIntervalSchema.parse(current));
       await this.database.studySessions.put(finished);
+      await this.database.growthRecords.add(createStudyGrowthRecord(finished, this.createId(), now));
       if (value.completeTask && value.outcome === "completed" && session.taskId) {
         await this.tasks.toggleComplete(session.taskId, true);
       }
@@ -223,8 +228,11 @@ export class SessionRepository {
   }
 
   async discard(id: string): Promise<void> {
-    await this.database.transaction("rw", this.database.studySessions, this.database.studyIntervals, async () => {
+    await this.database.transaction("rw", this.database.studySessions, this.database.studyIntervals, this.database.growthRecords, async () => {
+      const session = await this.requireSession(id);
+      if (session.status === "finished") throw new ConflictError("已结束的学习记录不能无痕删除");
       await this.database.studyIntervals.where("sessionId").equals(id).delete();
+      await this.database.growthRecords.where("sourceSessionId").equals(id).delete();
       await this.database.studySessions.delete(id);
     });
   }

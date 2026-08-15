@@ -14,13 +14,14 @@ describe('完整导出与覆盖导入', () => {
   });
   afterEach(async () => db.delete());
 
-  it('V2 导出包含计划数据、执行数据和设置', async () => {
+  it('V3 导出包含计划、执行、成长、冥想预留数据和设置', async () => {
     const backup = await backups.exportData();
     expect(backup).toMatchObject({
       format: 'studyflow-backup',
-      version: 2,
+      version: 3,
       data: {
         tasks: [], taskEvents: [], studySessions: [], studyIntervals: [], sessionRevisions: [],
+        growthRecords: [], meditationSessions: [], meditationIntervals: [],
         executionSettings: { focusMinutes: 25, stopwatchAutoPauseMinutes: 240 },
       },
     });
@@ -70,26 +71,34 @@ describe('完整导出与覆盖导入', () => {
     });
     const upgraded = await backups.exportData();
     expect(upgraded).toMatchObject({
-      version: 2,
+      version: 3,
       data: {
-        studySessions: [], studyIntervals: [], sessionRevisions: [],
+        studySessions: [], studyIntervals: [], sessionRevisions: [], growthRecords: [],
+        meditationSessions: [], meditationIntervals: [],
         executionSettings: { focusMinutes: 25, roundsPerSet: 4 },
       },
     });
   });
 
-  it('兼容缺少音量字段的早期 V2 备份并补齐默认音量', async () => {
+  it('兼容缺少音量字段的早期 V2 备份并补齐默认音量及 V3 空数据', async () => {
     const exported = await backups.exportData();
     const legacySettings: Record<string, unknown> = { ...exported.data.executionSettings };
     delete legacySettings.soundVolume;
     await backups.replaceAll({
       ...exported,
-      data: { ...exported.data, executionSettings: legacySettings },
+      version: 2,
+      data: {
+        tasks: exported.data.tasks, categories: exported.data.categories, taskEvents: exported.data.taskEvents,
+        studySessions: exported.data.studySessions, studyIntervals: exported.data.studyIntervals,
+        sessionRevisions: exported.data.sessionRevisions, executionSettings: legacySettings,
+      },
     });
-    expect((await backups.exportData()).data.executionSettings.soundVolume).toBe(80);
+    const upgraded = await backups.exportData();
+    expect(upgraded.data.executionSettings.soundVolume).toBe(80);
+    expect(upgraded.data.growthRecords).toEqual([]);
   });
 
-  it('V2 执行会话和区间可完整导出并覆盖恢复', async () => {
+  it('V3 执行会话、区间与成长记录可完整导出并覆盖恢复', async () => {
     const category = (await db.categories.orderBy('sortOrder').first())!;
     let now = new Date('2026-08-14T00:00:00.000Z');
     let sequence = 0;
@@ -102,12 +111,71 @@ describe('完整导出与覆盖导入', () => {
     const exported = await backups.exportData();
     expect(exported.data.studySessions).toHaveLength(1);
     expect(exported.data.studyIntervals).toHaveLength(1);
+    expect(exported.data.growthRecords).toHaveLength(1);
 
     await db.studySessions.clear();
     await db.studyIntervals.clear();
+    await db.growthRecords.clear();
     await backups.replaceAll(exported);
     expect(await db.studySessions.get(started.id)).toMatchObject({ outcome: 'completed' });
     expect(await db.studyIntervals.where('sessionId').equals(started.id).count()).toBe(1);
+    expect(await db.growthRecords.where('sourceSessionId').equals(started.id).count()).toBe(1);
+  });
+
+  it('拒绝破坏成长领域不变量的 V3 备份，且不改变当前数据', async () => {
+    const category = (await db.categories.orderBy('sortOrder').first())!;
+    let now = new Date('2026-08-14T00:00:00.000Z');
+    const sessions = new SessionRepository(db, () => new Date(now), (() => { let sequence = 0; return () => `growth-check-${++sequence}`; })());
+    const started = await sessions.startStopwatch({ categoryId: category.id, title: '合法成长来源', timezone: 'Asia/Shanghai' });
+    now = new Date('2026-08-14T00:01:01.000Z');
+    await sessions.finish(started.id, { outcome: 'completed' }, started.revision);
+    const valid = await backups.exportData();
+
+    const candidates = [
+      (() => { const value = structuredClone(valid); value.data.studySessions[0].status = 'paused'; value.data.studySessions[0].endedAt = null; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.studyIntervals[0].endedAt = '2026-08-14T00:00:30.000Z'; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords[0].plantType = 'flower'; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords[0].variant = ((value.data.growthRecords[0].variant + 1) % 3) as 0 | 1 | 2; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords[0].targetSecondsSnapshot += 60; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords[0].timezone = 'UTC'; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords[0].localDate = '2026-08-15'; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords[0].createdAt = '2026-08-14T00:01:00.000Z'; return value; })(),
+      (() => { const value = structuredClone(valid); value.data.growthRecords.push({ ...value.data.growthRecords[0], id: 'duplicate-growth' }); return value; })(),
+      (() => {
+        const value = structuredClone(valid);
+        const originalInterval = structuredClone(value.data.studyIntervals[0]);
+        value.data.studyIntervals[0].endedAt = '2026-08-14T00:00:30.000Z';
+        value.data.sessionRevisions.push({
+          id: 'forged-revision', sessionId: value.data.studySessions[0].id, reason: '无关审计记录',
+          before: { session: { ...value.data.studySessions[0], id: 'unrelated-session', revision: 0 }, intervals: [originalInterval] },
+          after: { session: value.data.studySessions[0], intervals: value.data.studyIntervals },
+          createdAt: '2026-08-14T00:01:01.000Z',
+        });
+        return value;
+      })(),
+    ];
+    for (const candidate of candidates) {
+      await expect(backups.replaceAll(candidate)).rejects.toThrow(/成长|会话/);
+      expect((await backups.exportData()).data).toEqual(valid.data);
+    }
+  });
+
+  it('历史修正到一分钟以下后，审计记录仍能证明植物来源并允许恢复备份', async () => {
+    const category = (await db.categories.orderBy('sortOrder').first())!;
+    let now = new Date('2026-08-14T00:00:00.000Z');
+    let sequence = 0;
+    const sessions = new SessionRepository(db, () => new Date(now), () => `revision-growth-${++sequence}`);
+    const started = await sessions.startStopwatch({ categoryId: category.id, title: '修正后的幼苗', timezone: 'Asia/Shanghai' });
+    now = new Date('2026-08-14T00:01:01.000Z');
+    const finished = (await sessions.finish(started.id, { outcome: 'completed' }, started.revision))!;
+    const shortened = (await sessions.listIntervals(finished.id)).map((interval) => ({
+      ...interval, endedAt: '2026-08-14T00:00:30.000Z', updatedAt: '2026-08-14T00:00:30.000Z',
+    }));
+    await sessions.correct(finished.id, { intervals: shortened, reason: '修正误记时间' }, finished.revision);
+    const exported = await backups.exportData();
+    await backups.replaceAll(exported);
+    expect(await db.growthRecords.where('sourceSessionId').equals(finished.id).count()).toBe(1);
+    expect(await db.sessionRevisions.where('sessionId').equals(finished.id).count()).toBe(1);
   });
 
   it('导出运行中的会话前自动暂停，并把暂停状态写入备份和数据库', async () => {
