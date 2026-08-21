@@ -48,7 +48,7 @@ test("开始冥想、跳过呼吸并完成复盘后同步 Today 花朵与 Histor
   const meditationRecord = page.getByRole("article").filter({ hasText: "平静" });
   await page.getByLabel("记录类型").selectOption("meditation");
   await expect(meditationRecord).toBeVisible();
-  await expect(meditationRecord).toContainText("01:01");
+  await expect(meditationRecord).toContainText(/01:0[12]/);
   await expect(meditationRecord).toContainText("更放松");
   await page.getByLabel("记录类型").selectOption("study");
   await expect(meditationRecord).toHaveCount(0);

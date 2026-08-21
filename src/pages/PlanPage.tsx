@@ -4,11 +4,12 @@ import { groupTasksByQuadrant, QUADRANT_LABELS, type Quadrant } from "../domain/
 import { TaskCard } from "../components/TaskCard";
 import { executionAdapter } from "../features/executionAdapter";
 import { totalFocusMs } from "../domain/execution";
+import { PlanningPanel } from "../components/PlanningPanel";
 
 const quadrantOrder: Quadrant[] = ["important-urgent", "important-not-urgent", "not-important-urgent", "not-important-not-urgent"];
 const quadrantHints: Record<Quadrant, string> = { "important-urgent": "优先处理", "important-not-urgent": "持续投入", "not-important-urgent": "尽快安排", "not-important-not-urgent": "有余力再做" };
 
-export function PlanPage({ tasks, categories, taskActualMinutes = {}, onToggle, onEdit, onDelete, onNew, onStart }: { tasks: Task[]; categories: Category[]; taskActualMinutes?: Record<string,number>; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void }) {
+export function PlanPage({ tasks, categories, taskActualMinutes = {}, onToggle, onEdit, onDelete, onNew, onStart, onSetCore }: { tasks: Task[]; categories: Category[]; taskActualMinutes?: Record<string,number>; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void; onSetCore?: (task: Task) => void }) {
   const [actuals, setActuals] = useState(taskActualMinutes);
   const [view, setView] = useState<"board" | "list">("board");
   const [categoryId, setCategoryId] = useState("all");
@@ -29,6 +30,7 @@ export function PlanPage({ tasks, categories, taskActualMinutes = {}, onToggle, 
   const grouped = groupTasksByQuadrant(filtered);
   useEffect(() => { let cancelled = false; void (async () => { const history = await executionAdapter.history(); const active = await executionAdapter.getActive(); const all = active ? [...history, active] : history; const groups = await Promise.all(all.map((item) => executionAdapter.listIntervals(item.id))); const seconds: Record<string, number> = {}; all.forEach((item, index) => { if (item.taskId) seconds[item.taskId] = (seconds[item.taskId] ?? 0) + totalFocusMs(groups[index]) / 1000; }); if (!cancelled) setActuals(Object.fromEntries(Object.entries(seconds).map(([id, value]) => [id, Math.round(value / 60)]))); })(); return () => { cancelled = true; }; }, [tasks]);
   return <>
+    <PlanningPanel tasks={tasks} categories={categories} />
     <header className="page-header nature-page-header">
 <div>
 <p className="eyebrow">计划中心</p>
@@ -63,8 +65,8 @@ export function PlanPage({ tasks, categories, taskActualMinutes = {}, onToggle, 
 <h2><i aria-hidden="true" />{QUADRANT_LABELS[quadrant]}</h2>
 <span>{quadrantHints[quadrant]} · {grouped[quadrant].length}</span>
 </header>
-<div>{grouped[quadrant].map((task) => <TaskCard compact key={task.id} task={task} category={categoryMap.get(task.categoryId)} actualMinutes={actuals[task.id] ?? 0} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onStart={onStart} />)}{grouped[quadrant].length === 0 && <p className="quadrant-empty">暂无任务</p>}</div>
-</section>)}</div> : <div className="task-stack plan-list">{filtered.map((task) => <TaskCard key={task.id} task={task} category={categoryMap.get(task.categoryId)} actualMinutes={actuals[task.id] ?? 0} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onStart={onStart} />)}{filtered.length === 0 && <div className="empty-state">
+<div>{grouped[quadrant].map((task) => <TaskCard compact key={task.id} task={task} category={categoryMap.get(task.categoryId)} actualMinutes={actuals[task.id] ?? 0} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onStart={onStart} onSetCore={onSetCore} />)}{grouped[quadrant].length === 0 && <p className="quadrant-empty">暂无任务</p>}</div>
+</section>)}</div> : <div className="task-stack plan-list">{filtered.map((task) => <TaskCard key={task.id} task={task} category={categoryMap.get(task.categoryId)} actualMinutes={actuals[task.id] ?? 0} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onStart={onStart} onSetCore={onSetCore} />)}{filtered.length === 0 && <div className="empty-state">
 <span>⌕</span>
 <h3>没有符合条件的任务</h3>
 <p>尝试调整筛选条件，或创建一个新任务。</p>

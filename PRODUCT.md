@@ -1,5 +1,9 @@
 # StudyFlow 产品交接说明
 
+## V3 release state
+
+Current local version: **0.3.0**. The personal workflow is Monthly/Weekly Plan → Today #1 → Focus/Minimum Start → Growth/History, with Meditation as an independent recovery module. Data remains local-first in IndexedDB and backup format v4 preserves planning data while importing v1–v3 backups.
+
 ## 当前版本
 
 当前工作区位于 `feature/v3-meditation`，目标版本为 V3 开发中间态。V1 与 V2 的核心计划和执行功能已经进入可运行状态；V3 的成长花园和 Meditation 已在本地完成一轮实现，但尚未合并到 `main`，也尚未发布正式版本号。

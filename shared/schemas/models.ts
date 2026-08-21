@@ -14,9 +14,37 @@ export const taskSchema = z.object({
   dueDate: localDateSchema,
   important: z.boolean(),
   urgent: z.boolean(),
+  planId: z.string().min(1).nullable().optional(),
+  isCoreTask: z.boolean().optional(),
+  avoidanceCount: z.number().int().nonnegative().optional(),
+  minimumStartMinutes: z.number().int().min(1).max(60).nullable().optional(),
   completed: z.boolean(),
   completedAt: isoDateTimeSchema.nullable(),
   archivedAt: isoDateTimeSchema.nullable(),
+  createdAt: isoDateTimeSchema,
+  updatedAt: isoDateTimeSchema,
+});
+
+export const planningPeriodTypeSchema = z.enum(["month", "week"]);
+export const planningPeriodSchema = z.object({
+  id: z.string().min(1), type: planningPeriodTypeSchema, title: z.string().trim().min(1).max(120),
+  startDate: localDateSchema, endDate: localDateSchema, parentId: z.string().min(1).nullable(),
+  note: z.string().trim().max(2000).default(""), createdAt: isoDateTimeSchema, updatedAt: isoDateTimeSchema,
+}).superRefine((value, ctx) => {
+  if (value.endDate < value.startDate) ctx.addIssue({ code: "custom", path: ["endDate"], message: "计划结束日期不能早于开始日期" });
+  if (value.type === "month" && value.parentId !== null) ctx.addIssue({ code: "custom", path: ["parentId"], message: "月度计划不能有上级计划" });
+});
+
+export const dailyReviewSchema = z.object({
+  id: z.string().min(1),
+  localDate: localDateSchema,
+  timezone: timeZoneSchema,
+  plannedMinutes: z.number().int().nonnegative(),
+  completedMinutes: z.number().int().nonnegative(),
+  actualFocusMinutes: z.number().int().nonnegative(),
+  matchesExpectation: z.enum(["yes", "partly", "no"]).nullable(),
+  blocker: z.string().trim().max(1000),
+  nextStep: z.string().trim().max(1000),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
 });
@@ -57,7 +85,10 @@ export const createTaskInputSchema = taskSchema.pick({
   dueDate: true,
   important: true,
   urgent: true,
-});
+  planId: true,
+  isCoreTask: true,
+  minimumStartMinutes: true,
+}).partial({ planId: true, isCoreTask: true, minimumStartMinutes: true });
 
 export const updateTaskInputSchema = createTaskInputSchema.partial().refine(
   (value) => Object.keys(value).length > 0,
@@ -68,6 +99,7 @@ export const createCategoryInputSchema = categorySchema.pick({ name: true });
 export const updateCategoryInputSchema = createCategoryInputSchema;
 
 export const timerModeSchema = z.enum(["stopwatch", "pomodoro"]);
+export const pomodoroPatternSchema = z.enum(["single", "cycle"]);
 export const sessionStatusSchema = z.enum(["running", "paused", "awaiting-confirmation", "sleep-review", "finished"]);
 export const sessionOutcomeSchema = z.enum(["completed", "partial", "unfinished"]);
 export const intervalKindSchema = z.enum(["focus", "break"]);
@@ -146,8 +178,11 @@ export const studySessionSchema = z.object({
   taskTitleSnapshot: z.string().trim().min(1).max(200),
   categoryNameSnapshot: z.string().trim().min(1).max(80),
   estimatedMinutesSnapshot: z.number().int().min(1).max(1440).nullable(),
+  isCoreTaskSnapshot: z.boolean().optional(),
+  minimumStartTargetSeconds: z.number().int().positive().nullable().optional(),
   goal: z.string().trim().max(500),
   mode: timerModeSchema,
+  pomodoroPattern: pomodoroPatternSchema.optional(),
   pomodoroSettingsSnapshot: pomodoroSettingsSnapshotSchema.nullable(),
   status: sessionStatusSchema,
   activeIntervalId: z.string().min(1).nullable(),
@@ -276,6 +311,8 @@ export const startSessionInputSchema = z.object({
   goal: z.string().trim().max(500).default(""),
   timezone: timeZoneSchema,
   pomodoroSettings: pomodoroSettingsSnapshotSchema.optional(),
+  pomodoroPattern: pomodoroPatternSchema.optional(),
+  minimumStartMinutes: z.number().int().min(1).max(60).nullable().optional(),
 });
 
 export const finishSessionInputSchema = z.object({
@@ -287,6 +324,9 @@ export const finishSessionInputSchema = z.object({
 }).refine((v) => v.outcome === "completed" || v.failureReason !== null, "部分完成或未完成必须选择原因");
 
 export type Task = z.infer<typeof taskSchema>;
+export type PlanningPeriod = z.infer<typeof planningPeriodSchema>;
+export type PlanningPeriodType = z.infer<typeof planningPeriodTypeSchema>;
+export type DailyReview = z.infer<typeof dailyReviewSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type TaskEvent = z.infer<typeof taskEventSchema>;
 export type TaskEventType = z.infer<typeof taskEventTypeSchema>;
@@ -295,6 +335,7 @@ export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategoryInputSchema>;
 export type TimerMode = z.infer<typeof timerModeSchema>;
+export type PomodoroPattern = z.infer<typeof pomodoroPatternSchema>;
 export type SessionStatus = z.infer<typeof sessionStatusSchema>;
 export type SessionOutcome = z.infer<typeof sessionOutcomeSchema>;
 export type FailureReason = z.infer<typeof failureReasonSchema>;

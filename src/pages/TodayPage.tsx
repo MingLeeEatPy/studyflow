@@ -10,6 +10,7 @@ import { calculateGrowthStage, type GrowthStage } from "../domain/growth";
 import { PlantIllustration } from "../components/PlantIllustration";
 import { meditationAdapter } from "../features/meditationAdapter";
 import { totalMeditationMs } from "../domain/meditation";
+import { DailyReviewPanel } from "../components/DailyReviewPanel";
 
 const meditationIntentions: Record<MeditationSession["intention"], string> = {
   calm: "平静冥想",
@@ -26,7 +27,7 @@ interface GardenPlant {
   label: string;
 }
 
-export function TodayPage({ tasks, categories, sessions = [], meditationSessions, growthRecords = [], taskActualMinutes = {}, activeSession, activeMeditation, now = Date.now(), onToggle, onEdit, onDelete, onNew, onStart }: { tasks: Task[]; categories: Category[]; sessions?: StudySession[]; meditationSessions?: MeditationSession[]; growthRecords?: GrowthRecord[]; sessionDurations?: Record<string,number>; taskActualMinutes?: Record<string,number>; activeSession?: StudySession | null; activeMeditation?: MeditationSession | null; now?: number; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void }) {
+export function TodayPage({ tasks, categories, sessions = [], meditationSessions, growthRecords = [], taskActualMinutes = {}, activeSession, activeMeditation, now = Date.now(), onToggle, onEdit, onDelete, onNew, onStart, onSetCore }: { tasks: Task[]; categories: Category[]; sessions?: StudySession[]; meditationSessions?: MeditationSession[]; growthRecords?: GrowthRecord[]; sessionDurations?: Record<string,number>; taskActualMinutes?: Record<string,number>; activeSession?: StudySession | null; activeMeditation?: MeditationSession | null; now?: number; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void; onSetCore?: (task: Task) => void }) {
   const [execution, setExecution] = useState<{ actualSeconds: number; taskMinutes: Record<string, number>; active: StudySession | null; meditationActive: MeditationSession | null; garden: GardenPlant[]; gardenTotal: number }>({ actualSeconds: 0, taskMinutes: taskActualMinutes, active: activeSession ?? null, meditationActive: activeMeditation ?? null, garden: [], gardenTotal: 0 });
   const todayTasks = selectTodayTasks(tasks);
   const stats = calculateTodayStats(tasks);
@@ -98,7 +99,8 @@ export function TodayPage({ tasks, categories, sessions = [], meditationSessions
         {!execution.active && execution.meditationActive && <div className="today-active"><span className="today-active-dot"/><span><small>正在冥想</small><strong>{meditationIntentions[execution.meditationActive.intention]}</strong></span><b>{execution.meditationActive.status === "breathing" ? "呼吸引导" : execution.meditationActive.mode === "timed" ? "定时" : "自由计时"}</b></div>}
       </aside>
     </section>
+    <DailyReviewPanel localDate={localToday} plannedMinutes={stats.plannedMinutes} completedMinutes={stats.completedMinutes} actualFocusMinutes={actualMinutes} />
     <section className="section-heading today-list-heading"><div><h2>今日任务</h2><p>{pendingCount} 项待完成 · {completedCount} 项已完成</p></div></section>
-    <div className="task-stack">{todayTasks.map((task) => <TaskCard key={task.id} task={task} category={categoryMap.get(task.categoryId)} actualMinutes={execution.taskMinutes[task.id] ?? 0} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onStart={onStart} />)}{todayTasks.length === 0 && <div className="empty-state"><span>✓</span><h3>今天的任务已清空</h3><p>可以休息一下，或者为下一步创建新任务。</p><button className="button secondary" onClick={onNew}>创建任务</button></div>}</div>
+    <div className="task-stack">{todayTasks.map((task) => <TaskCard key={task.id} task={task} category={categoryMap.get(task.categoryId)} actualMinutes={execution.taskMinutes[task.id] ?? 0} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onStart={onStart} onSetCore={onSetCore} />)}{todayTasks.length === 0 && <div className="empty-state"><span>✓</span><h3>今天的任务已清空</h3><p>可以休息一下，或者为下一步创建新任务。</p><button className="button secondary" onClick={onNew}>创建任务</button></div>}</div>
   </>;
 }

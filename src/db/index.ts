@@ -8,4 +8,8 @@ export type { PomodoroAdvanceAction, HistoryFilter, SleepGapResolution, SessionC
 export { settingsRepository, SettingsRepository } from "./settingsRepository";
 export { growthRepository, GrowthRepository } from "./growthRepository";
 export { meditationRepository, MeditationRepository } from "./meditationRepository";
+export { planningRepository, PlanningRepository } from "./planningRepository";
+export { dailyReviewRepository, DailyReviewRepository } from "./dailyReviewRepository";
+export type { DailyReviewInput } from "./dailyReviewRepository";
+export type { PlanningPeriodInput } from "./planningRepository";
 export type { MeditationSleepGapResolution } from "./meditationRepository";

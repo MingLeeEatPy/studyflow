@@ -1,5 +1,11 @@
 # StudyFlow Codex Handoff
 
+## Windows v3 completion update
+
+PWA is enabled through `vite-plugin-pwa`: production builds emit `manifest.webmanifest` and `sw.js`; local verification works on `localhost`, and installation requires HTTPS after deployment. The service worker presents updates for explicit refresh and never silently reloads an active session.
+
+The Windows workspace is now on v3 / package version 0.3.0. Unit tests, typecheck, lint, production build, and the existing Playwright flows have been run on Windows; Windows-specific visual snapshots are checked in. Do not add v4 features before dogfooding. Run commands with `npm.cmd` when PowerShell blocks `npm.ps1`.
+
 ## 交接日期与分支
 
 - 交接环境：Ubuntu 22.04

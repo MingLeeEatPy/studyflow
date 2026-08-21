@@ -163,3 +163,5 @@ button{cursor:pointer}
 .toolbar{align-items:stretch}
 .segmented button{flex:1}
 }
+ .pwa-update{position:fixed;right:1rem;bottom:1rem;z-index:1000;display:flex;align-items:center;gap:.6rem;max-width:min(34rem,calc(100vw - 2rem));padding:.8rem 1rem;border:1px solid var(--line,#cbd5c2);border-radius:1rem;background:var(--panel,#fff);box-shadow:0 14px 36px #1d352426;color:var(--ink,#1d3524)}
+.pwa-update span{flex:1;font-size:.9rem}

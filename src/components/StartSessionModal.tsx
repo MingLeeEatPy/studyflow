@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Category, Task } from "../domain/models";
 import type { ExecutionSettings, StartContext, StartSessionInput, TimerMode } from "../features/executionTypes";
-import type { PomodoroSettingsSnapshot } from "../../shared/schemas/models";
+import type { PomodoroPattern, PomodoroSettingsSnapshot } from "../../shared/schemas/models";
 import { Modal } from "./Modal";
 import { PomodoroSettingsFields } from "./PomodoroSettingsFields";
 
@@ -20,6 +20,7 @@ export function StartSessionModal({ context, tasks, categories, settings, busy, 
   const [title, setTitle] = useState(initialTask?.title ?? "");
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState<TimerMode>("stopwatch");
+  const [pomodoroPattern, setPomodoroPattern] = useState<PomodoroPattern>("cycle");
   const [pomodoroSettings, setPomodoroSettings] = useState<PomodoroSettingsSnapshot>({
     focusMinutes: settings?.focusMinutes ?? 25,
     shortBreakMinutes: settings?.shortBreakMinutes ?? 5,
@@ -36,7 +37,7 @@ export function StartSessionModal({ context, tasks, categories, settings, busy, 
     const selected = tasks.find((task) => task.id === taskId);
     if (!categoryId) return setError("请选择学习分类");
     if (!selected && !title.trim()) return setError("临时学习需要填写名称");
-    try { await onStart(mode, { taskId: selected?.id ?? null, categoryId, title: selected?.title ?? title.trim(), goal: goal.trim(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, pomodoroSettings: mode === "pomodoro" ? pomodoroSettings : undefined }); }
+    try { await onStart(mode, { taskId: selected?.id ?? null, categoryId, title: selected?.title ?? title.trim(), goal: goal.trim(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, pomodoroSettings: mode === "pomodoro" ? pomodoroSettings : undefined, pomodoroPattern: mode === "pomodoro" ? pomodoroPattern : undefined, minimumStartMinutes: selected?.minimumStartMinutes ?? null }); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "无法开始学习"); }
   }
   return <Modal title="开始学习" onClose={onClose}>
@@ -46,7 +47,7 @@ export function StartSessionModal({ context, tasks, categories, settings, busy, 
       <label className="field">分类<select disabled={Boolean(taskId)} value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
       <label className="field field-wide">本次目标（可选）<input value={goal} maxLength={200} placeholder="结束时希望达到什么结果？" onChange={(event) => setGoal(event.target.value)} /></label>
       <fieldset className="mode-picker field-wide"><legend>计时方式</legend><label className={mode === "stopwatch" ? "selected" : ""}><input type="radio" name="mode" checked={mode === "stopwatch"} onChange={() => setMode("stopwatch")} /><strong>正计时</strong><span>适合自由安排时间的学习</span></label><label className={mode === "pomodoro" ? "selected" : ""}><input type="radio" name="mode" checked={mode === "pomodoro"} onChange={() => setMode("pomodoro")} /><strong>番茄钟</strong><span>专注与休息交替进行</span></label></fieldset>
-      {mode === "pomodoro" && <fieldset className="session-pomodoro field-wide"><legend>本次番茄设置</legend><PomodoroSettingsFields value={pomodoroSettings} onChange={setPomodoroSettings} /><p>只用于本次学习，不会修改“专注设置”中的默认值。</p></fieldset>}
+      {mode === "pomodoro" && <fieldset className="session-pomodoro field-wide"><legend>番茄模式</legend><label><input type="radio" name="pomodoro-pattern" checked={pomodoroPattern === "single"} onChange={() => setPomodoroPattern("single")} /> 单轮：专注结束后可休息一次或直接结束</label><label><input type="radio" name="pomodoro-pattern" checked={pomodoroPattern === "cycle"} onChange={() => setPomodoroPattern("cycle")} /> 多轮：按专注、短休息、长休息循环</label>{pomodoroPattern === "single" ? <label className="field">专注时长（分钟）<input type="number" min="1" max="180" value={pomodoroSettings.focusMinutes} onChange={(event) => setPomodoroSettings({ ...pomodoroSettings, focusMinutes: Number(event.target.value) })} /></label> : <><PomodoroSettingsFields value={pomodoroSettings} onChange={setPomodoroSettings} /><p>只用于本次学习，不会修改默认设置。</p></>}</fieldset>}
       {error && <p className="form-error field-wide" role="alert">{error}</p>}
       <footer className="modal-actions field-wide"><button className="button secondary" type="button" onClick={onClose}>取消</button><button className="button primary" disabled={busy} type="submit">{busy ? "正在开始…" : "进入 Focus"}</button></footer>
     </form>

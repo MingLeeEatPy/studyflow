@@ -10,6 +10,8 @@ import type {
   StudySession,
   Task,
   TaskEvent,
+  PlanningPeriod,
+  DailyReview,
 } from "../domain/models";
 
 export const DEFAULT_CATEGORY_NAMES = ["高数", "线性代数", "C", "CS50", "其他"] as const;
@@ -33,6 +35,8 @@ export class StudyFlowDatabase extends Dexie {
   growthRecords!: Table<GrowthRecord, string>;
   meditationSessions!: Table<MeditationSession, string>;
   meditationIntervals!: Table<MeditationInterval, string>;
+  planningPeriods!: Table<PlanningPeriod, string>;
+  dailyReviews!: Table<DailyReview, string>;
 
   constructor(name = "StudyFlow") {
     super(name);
@@ -64,6 +68,34 @@ export class StudyFlowDatabase extends Dexie {
       growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
       meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
       meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
+    });
+    this.version(4).stores({
+      tasks: "id, categoryId, planId, isCoreTask, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt", executionSettings: "id",
+      growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
+      meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
+      meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
+      planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
+    }).upgrade(async (tx) => {
+      await tx.table<Task, string>("tasks").toCollection().modify({ planId: null, isCoreTask: false, avoidanceCount: 0, minimumStartMinutes: null });
+      await tx.table<StudySession, string>("studySessions").toCollection().modify({ isCoreTaskSnapshot: false, minimumStartTargetSeconds: null });
+    });
+    this.version(5).stores({
+      tasks: "id, categoryId, planId, isCoreTask, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt", executionSettings: "id",
+      growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
+      meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
+      meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
+      planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
+      dailyReviews: "id, &localDate, updatedAt",
     });
 
     this.on("populate", () => {

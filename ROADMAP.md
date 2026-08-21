@@ -1,5 +1,9 @@
 # StudyFlow Roadmap
 
+## V3 status — Personal Complete Version
+
+V3 is complete for personal dogfooding: monthly and weekly planning, a linked Today #1 priority, minimum-start activation, weighted Growth Garden feedback, and independent Meditation/Recovery are available locally. v4 begins only after real dogfooding evidence; v5 scope will be determined by dogfooding and Public Beta feedback.
+
 ## 当前交接点
 
 - V1 Plan：已完成。

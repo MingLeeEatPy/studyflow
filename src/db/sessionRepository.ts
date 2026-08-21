@@ -54,8 +54,9 @@ export class SessionRepository {
       const session = studySessionSchema.parse({
         id: sessionId, taskId: task?.id ?? null, categoryId: category.id,
         taskTitleSnapshot: task?.title ?? value.title, categoryNameSnapshot: category.name,
-        estimatedMinutesSnapshot: task?.estimatedMinutes ?? null, goal: value.goal,
-        mode, pomodoroSettingsSnapshot: pomodoroSettings, status: "running", activeIntervalId: interval.id, pomodoroRound: 1,
+        estimatedMinutesSnapshot: task?.estimatedMinutes ?? null, isCoreTaskSnapshot: task?.isCoreTask ?? false,
+        minimumStartTargetSeconds: value.minimumStartMinutes ? value.minimumStartMinutes * 60 : task?.minimumStartMinutes ? task.minimumStartMinutes * 60 : null, goal: value.goal,
+        mode, pomodoroPattern: mode === "pomodoro" ? value.pomodoroPattern ?? "cycle" : undefined, pomodoroSettingsSnapshot: pomodoroSettings, status: "running", activeIntervalId: interval.id, pomodoroRound: 1,
         startedAt: now, endedAt: null, timezone: value.timezone, outcome: null,
         failureReason: null, note: "", summary: "", revision: 0, createdAt: now, updatedAt: now,
       });
@@ -81,6 +82,7 @@ export class SessionRepository {
       if (session.status === "finished") throw new ConflictError("已结束的会话不能修改番茄设置");
       if (session.mode !== "pomodoro") throw new ConflictError("当前会话不是番茄钟");
       const now = this.clock().toISOString();
+      if (session.pomodoroPattern === "single") throw new ConflictError("单轮番茄不支持调整循环设置");
       const updated = studySessionSchema.parse({
         ...session, pomodoroSettingsSnapshot: settings, revision: session.revision + 1, updatedAt: now,
       });
@@ -118,6 +120,9 @@ export class SessionRepository {
       if (session.status === "running" && interval.kind === "break" && action === "skip-break") {
         interval.endedAt = now; interval.updatedAt = now;
         await this.database.studyIntervals.put(studyIntervalSchema.parse(interval));
+        if (session.pomodoroPattern === "single") {
+          return { ...session, status: "awaiting-confirmation", activeIntervalId: interval.id };
+        }
         const round = session.pomodoroRound + 1;
         const next = studyIntervalSchema.parse({ id: this.createId(), sessionId: id, kind: "focus", pomodoroRound: round,
           targetSeconds: settings.focusMinutes * 60, startedAt: now, endedAt: null, pauses: [], sleepGaps: [], createdAt: now, updatedAt: now });
@@ -136,6 +141,7 @@ export class SessionRepository {
         kind = action === "start-break" ? "break" : "focus";
         if (action === "skip-break") round += 1;
       } else {
+        if (session.pomodoroPattern === "single") throw new ConflictError("单轮番茄结束后请直接结束学习");
         if (action !== "start-focus") throw new ConflictError("休息结束后只能开始下一轮专注");
         kind = "focus"; round += 1;
       }
@@ -220,8 +226,12 @@ export class SessionRepository {
       if (current) await this.database.studyIntervals.put(studyIntervalSchema.parse(current));
       await this.database.studySessions.put(finished);
       await this.database.growthRecords.add(createStudyGrowthRecord(finished, this.createId(), now));
+      if (session.taskId && session.isCoreTaskSnapshot && value.outcome !== "completed") await this.tasks.recordAvoidance(session.taskId);
       if (value.completeTask && value.outcome === "completed" && session.taskId) {
-        await this.tasks.toggleComplete(session.taskId, true);
+        // A task can be archived while its already-started session remains active.
+        // Preserve the auditable session; only sync completion when the task is still actionable.
+        const linkedTask = await this.database.tasks.get(session.taskId);
+        if (linkedTask && linkedTask.archivedAt === null) await this.tasks.toggleComplete(session.taskId, true);
       }
       return finished;
     });

@@ -53,9 +53,11 @@ export class TaskRepository {
     const category = await this.database.categories.get(value.categoryId);
     if (!category || category.archivedAt !== null) throw new NotFoundError("分类");
     const timestamp = nowIso();
+    if (value.planId) await this.requirePlan(value.planId);
     const task = taskSchema.parse({
       ...value,
       id: createId(),
+      planId: value.planId ?? null, isCoreTask: value.isCoreTask ?? false, avoidanceCount: 0, minimumStartMinutes: value.minimumStartMinutes ?? null,
       completed: false,
       completedAt: null,
       archivedAt: null,
@@ -63,6 +65,7 @@ export class TaskRepository {
       updatedAt: timestamp,
     });
     await this.database.transaction("rw", this.database.tasks, this.database.taskEvents, async () => {
+      if (task.isCoreTask) await this.database.tasks.filter((item) => item.isCoreTask === true).modify({ isCoreTask: false, updatedAt: timestamp });
       await this.database.tasks.add(task);
       await this.database.taskEvents.add(eventFor(task, "created", timestamp, await this.nextEventSequence()));
     });
@@ -77,13 +80,34 @@ export class TaskRepository {
       const category = await this.database.categories.get(value.categoryId);
       if (!category || category.archivedAt !== null) throw new NotFoundError("分类");
     }
+    if (value.planId) await this.requirePlan(value.planId);
     const timestamp = nowIso();
     const updated = taskSchema.parse({ ...current, ...value, updatedAt: timestamp });
     await this.database.transaction("rw", this.database.tasks, this.database.taskEvents, async () => {
+      if (updated.isCoreTask) await this.database.tasks.filter((item) => item.id !== id && item.isCoreTask === true).modify({ isCoreTask: false, updatedAt: timestamp });
       await this.database.tasks.put(updated);
       await this.database.taskEvents.add(eventFor(updated, "updated", timestamp, await this.nextEventSequence()));
     });
     return updated;
+  }
+
+  async setCoreTask(id: string, enabled: boolean): Promise<Task> {
+    return this.database.transaction("rw", this.database.tasks, this.database.taskEvents, async () => {
+      const current = await this.get(id);
+      if (current.archivedAt || current.completed) throw new NotFoundError("未完成任务");
+      const timestamp = nowIso();
+      if (enabled) await this.database.tasks.filter((task) => task.isCoreTask === true).modify({ isCoreTask: false, updatedAt: timestamp });
+      const updated = taskSchema.parse({ ...current, isCoreTask: enabled, updatedAt: timestamp });
+      await this.database.tasks.put(updated);
+      await this.database.taskEvents.add(eventFor(updated, "updated", timestamp, await this.nextEventSequence()));
+      return updated;
+    });
+  }
+
+  async recordAvoidance(id: string): Promise<void> {
+    const task = await this.database.tasks.get(id);
+    if (!task?.isCoreTask || task.completed || task.archivedAt) return;
+    await this.database.tasks.update(id, { avoidanceCount: (task.avoidanceCount ?? 0) + 1, updatedAt: nowIso() });
   }
 
   async toggleComplete(id: string, completed?: boolean): Promise<Task> {
@@ -121,6 +145,10 @@ export class TaskRepository {
   private async nextEventSequence(): Promise<number> {
     const lastEvent = await this.database.taskEvents.orderBy("sequence").last();
     return (lastEvent?.sequence ?? 0) + 1;
+  }
+  private async requirePlan(id: string): Promise<void> {
+    const plan = await this.database.planningPeriods.get(id);
+    if (!plan || plan.type !== "week") throw new NotFoundError("周计划");
   }
 }
 

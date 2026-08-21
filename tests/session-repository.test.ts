@@ -143,6 +143,21 @@ describe("V2 学习会话 Repository", () => {
       .toEqual(["focus", "break", "focus"]);
   });
 
+  it("单轮番茄只允许一次可选休息，不创建下一轮专注", async () => {
+    const category = (await db.categories.orderBy("sortOrder").first())!;
+    const started = await sessions.startPomodoro({
+      categoryId: category.id, title: "单轮学习", timezone: "Asia/Shanghai", pomodoroPattern: "single",
+      pomodoroSettings: { focusMinutes: 1, shortBreakMinutes: 5, longBreakMinutes: 15, roundsPerSet: 4 },
+    });
+    advance(60_000);
+    const focusDone = await sessions.completeCurrentStage(started.id, started.revision);
+    const onBreak = await sessions.advancePomodoro(started.id, "start-break", focusDone.revision);
+    advance(5 * 60_000);
+    const breakDone = await sessions.completeCurrentStage(started.id, onBreak.revision);
+    await expect(sessions.advancePomodoro(started.id, "start-focus", breakDone.revision)).rejects.toThrow(/单轮番茄/);
+    expect((await sessions.listIntervals(started.id)).map((interval) => interval.kind)).toEqual(["focus", "break"]);
+  });
+
   it("专注到时后保持区间开放并累计超时，开始休息时才关闭", async () => {
     const category = (await db.categories.orderBy("sortOrder").first())!;
     const started = await sessions.startPomodoro({
@@ -318,6 +333,23 @@ describe("V2 学习会话 Repository", () => {
     advance(61_000);
     await sessions.finish(second.id, { outcome: "completed", completeTask: true }, second.revision);
     expect((await tasks.get(task.id)).completed).toBe(true);
+  });
+
+  it("关联任务在专注期间归档后，仍可结束并保存会话", async () => {
+    const category = (await db.categories.orderBy("sortOrder").first())!;
+    const task = await tasks.create({
+      title: "归档中的线性代数", categoryId: category.id, estimatedMinutes: 30,
+      dueDate: "2026-08-14", important: true, urgent: false,
+    });
+    const started = await sessions.startStopwatch({ taskId: task.id, categoryId: category.id, timezone: "Asia/Shanghai" });
+    await tasks.archive(task.id);
+    advance(61_000);
+
+    const finished = await sessions.finish(started.id, { outcome: "completed", completeTask: true }, started.revision);
+
+    expect(finished).toMatchObject({ id: started.id, status: "finished", outcome: "completed" });
+    expect(await sessions.getActive()).toBeUndefined();
+    expect(await tasks.get(task.id)).toMatchObject({ archivedAt: expect.any(String), completed: false });
   });
 
   it("部分完成必须选择原因，历史筛选按 outcome 工作", async () => {

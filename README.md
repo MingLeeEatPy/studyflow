@@ -93,4 +93,30 @@ npm install
 
 ## License
 
+## PWA installation and offline use
+
+StudyFlow is installable after deployment on **HTTPS** (or when using `localhost`). Personal data remains in this browser's IndexedDB: installation does not add cloud sync, so export a JSON backup before changing browser, device, or site address.
+
+### Windows (Edge or Chrome)
+
+1. Open the deployed StudyFlow HTTPS address and let it load once online.
+2. In Edge, choose **… → Apps → Install StudyFlow**. In Chrome, choose the address-bar install icon or **⋮ → Install StudyFlow**.
+3. Launch the standalone app from the Start menu or desktop shortcut. It can reopen offline after its first online load.
+
+### Android (Chrome)
+
+1. Open the same HTTPS address in Chrome while online.
+2. Tap **⋮ → Install app** (or **Add to Home screen**) and confirm.
+3. Open the new home-screen icon. The first load and version updates require connectivity; cached screens and local data work offline.
+
+### Update and acceptance check
+
+- A waiting update is shown as a prompt. Select **Refresh update** only at a natural break; StudyFlow never reloads an active focus or meditation session by itself.
+- Manual test: install, create a task, close the app, disable network, reopen it, and verify the task and navigation still load.
+- Automated PWA test: `npm.cmd run test:e2e -- e2e/pwa.spec.ts`.
+
+### 提醒的边界
+
+StudyFlow 会在前台播放提示音，并在已授权时发送系统通知；恢复到前台后始终用真实时间戳校正计时状态。纯 PWA 可能被浏览器或系统在长时间后台、锁屏后冻结，因此无法承诺准点声音。需要可靠锁屏提醒时，应使用后续的原生封装或推送服务。
+
 StudyFlow 使用 [MIT License](./LICENSE)。

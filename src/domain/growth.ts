@@ -16,7 +16,7 @@ export function calculateGrowthStage(effectiveSeconds: number, targetSeconds: nu
 }
 
 export function studyGrowthTargetSeconds(session: StudySession): number {
-  if (session.taskId && session.estimatedMinutesSnapshot) return session.estimatedMinutesSnapshot * 60;
+  if (session.taskId && session.estimatedMinutesSnapshot) return session.isCoreTaskSnapshot ? Math.max(60, Math.ceil(session.estimatedMinutesSnapshot * 39)) : session.estimatedMinutesSnapshot * 60;
   if (session.mode === "pomodoro" && session.pomodoroSettingsSnapshot) {
     return session.pomodoroSettingsSnapshot.focusMinutes * 60;
   }

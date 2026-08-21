@@ -24,6 +24,8 @@ export function selectTodayTasks(tasks: Task[], now = new Date()): Task[] {
 
 export function compareTasks(left: Task, right: Task): number {
   if (left.completed !== right.completed) return Number(left.completed) - Number(right.completed);
+  if (Boolean(left.isCoreTask) !== Boolean(right.isCoreTask)) return Number(Boolean(right.isCoreTask)) - Number(Boolean(left.isCoreTask));
+  if ((left.avoidanceCount ?? 0) !== (right.avoidanceCount ?? 0)) return (right.avoidanceCount ?? 0) - (left.avoidanceCount ?? 0);
   return left.dueDate.localeCompare(right.dueDate) || left.createdAt.localeCompare(right.createdAt);
 }
 
