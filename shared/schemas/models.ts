@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日期必须为 YYYY-MM-DD");
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
+export const timeZoneSchema = z.string().min(1).refine((value) => {
+  try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; }
+}, "时区必须是有效的 IANA 时区名称");
 
 export const taskSchema = z.object({
   id: z.string().min(1),
@@ -151,7 +154,7 @@ export const studySessionSchema = z.object({
   pomodoroRound: z.number().int().positive(),
   startedAt: isoDateTimeSchema,
   endedAt: isoDateTimeSchema.nullable(),
-  timezone: z.string().min(1),
+  timezone: timeZoneSchema,
   outcome: sessionOutcomeSchema.nullable(),
   failureReason: failureReasonSchema.nullable(),
   note: z.string().trim().max(2000),
@@ -183,12 +186,95 @@ export const executionSettingsSchema = z.object({
   updatedAt: isoDateTimeSchema,
 });
 
+export const growthSourceTypeSchema = z.enum(["study", "meditation"]);
+export const plantTypeSchema = z.enum(["tree", "flower"]);
+export const growthRecordSchema = z.object({
+  id: z.string().min(1),
+  sourceType: growthSourceTypeSchema,
+  sourceSessionId: z.string().min(1),
+  plantType: plantTypeSchema,
+  variant: z.number().int().min(0).max(2),
+  targetSecondsSnapshot: z.number().int().positive(),
+  localDate: localDateSchema,
+  timezone: timeZoneSchema,
+  createdAt: isoDateTimeSchema,
+});
+
+export const meditationModeSchema = z.enum(["timed", "free"]);
+export const meditationStatusSchema = z.enum(["breathing", "running", "paused", "sleep-review", "finished"]);
+export const meditationIntentionSchema = z.enum(["calm", "refocus", "observe", "self-care", "rest", "other"]);
+export const breathingPatternSchema = z.enum(["4-7-8", "balanced", "box", "none"]);
+export const meditationSessionSchema = z.object({
+  id: z.string().min(1),
+  mode: meditationModeSchema,
+  status: meditationStatusSchema,
+  intention: meditationIntentionSchema,
+  intentionNote: z.string().trim().max(200),
+  breathingPattern: breathingPatternSchema,
+  breathingRounds: z.number().int().nonnegative().max(20),
+  targetSeconds: z.number().int().positive().nullable(),
+  activeIntervalId: z.string().min(1).nullable(),
+  startedAt: isoDateTimeSchema,
+  meditationStartedAt: isoDateTimeSchema.nullable(),
+  endedAt: isoDateTimeSchema.nullable(),
+  timezone: timeZoneSchema,
+  feeling: z.number().int().min(1).max(5).nullable(),
+  note: z.string().trim().max(2000),
+  revision: z.number().int().nonnegative(),
+  createdAt: isoDateTimeSchema,
+  updatedAt: isoDateTimeSchema,
+});
+
+export const meditationIntervalSchema = z.object({
+  id: z.string().min(1),
+  sessionId: z.string().min(1),
+  kind: z.enum(["breathing", "meditation"]),
+  targetSeconds: z.number().int().positive().nullable(),
+  startedAt: isoDateTimeSchema,
+  endedAt: isoDateTimeSchema.nullable(),
+  pauses: z.array(pausePeriodSchema),
+  sleepGaps: z.array(sleepGapSchema),
+  createdAt: isoDateTimeSchema,
+  updatedAt: isoDateTimeSchema,
+}).superRefine((value, ctx) => {
+  const start = Date.parse(value.startedAt);
+  const end = value.endedAt ? Date.parse(value.endedAt) : null;
+  if (end !== null && end < start) ctx.addIssue({ code: "custom", path: ["endedAt"], message: "冥想阶段结束时间不能早于开始时间" });
+  value.pauses.forEach((pause, index) => {
+    const pauseStart = Date.parse(pause.startedAt);
+    const pauseEnd = pause.endedAt ? Date.parse(pause.endedAt) : null;
+    if (pauseStart < start || (end !== null && (pauseEnd ?? Number.POSITIVE_INFINITY) > end)) {
+      ctx.addIssue({ code: "custom", path: ["pauses", index], message: "暂停区间必须位于冥想阶段内" });
+    }
+  });
+  value.sleepGaps.forEach((gap, index) => {
+    if (Date.parse(gap.from) < start || (end !== null && Date.parse(gap.to) > end)) {
+      ctx.addIssue({ code: "custom", path: ["sleepGaps", index], message: "休眠区间必须位于冥想阶段内" });
+    }
+  });
+});
+
+export const startMeditationInputSchema = z.object({
+  mode: meditationModeSchema,
+  targetMinutes: z.number().int().min(1).max(180).nullable(),
+  intention: meditationIntentionSchema,
+  intentionNote: z.string().trim().max(200).default(""),
+  breathingPattern: breathingPatternSchema,
+  timezone: timeZoneSchema,
+}).refine((value) => value.mode === "free" ? value.targetMinutes === null : value.targetMinutes !== null,
+  "定时冥想必须设置时长，自由冥想不能设置固定时长");
+
+export const finishMeditationInputSchema = z.object({
+  feeling: z.number().int().min(1).max(5).nullable().default(null),
+  note: z.string().trim().max(2000).default(""),
+});
+
 export const startSessionInputSchema = z.object({
   taskId: z.string().min(1).nullable().optional(),
   categoryId: z.string().min(1),
   title: z.string().trim().min(1).max(200).optional(),
   goal: z.string().trim().max(500).default(""),
-  timezone: z.string().min(1),
+  timezone: timeZoneSchema,
   pomodoroSettings: pomodoroSettingsSnapshotSchema.optional(),
 });
 
@@ -217,5 +303,16 @@ export type StudySession = z.infer<typeof studySessionSchema>;
 export type SessionRevision = z.infer<typeof sessionRevisionSchema>;
 export type ExecutionSettings = z.infer<typeof executionSettingsSchema>;
 export type PomodoroSettingsSnapshot = z.infer<typeof pomodoroSettingsSnapshotSchema>;
+export type GrowthSourceType = z.infer<typeof growthSourceTypeSchema>;
+export type PlantType = z.infer<typeof plantTypeSchema>;
+export type GrowthRecord = z.infer<typeof growthRecordSchema>;
+export type MeditationMode = z.infer<typeof meditationModeSchema>;
+export type MeditationStatus = z.infer<typeof meditationStatusSchema>;
+export type MeditationIntention = z.infer<typeof meditationIntentionSchema>;
+export type BreathingPattern = z.infer<typeof breathingPatternSchema>;
+export type MeditationSession = z.infer<typeof meditationSessionSchema>;
+export type MeditationInterval = z.infer<typeof meditationIntervalSchema>;
+export type StartMeditationInput = z.input<typeof startMeditationInputSchema>;
+export type FinishMeditationInput = z.input<typeof finishMeditationInputSchema>;
 export type StartSessionInput = z.input<typeof startSessionInputSchema>;
 export type FinishSessionInput = z.input<typeof finishSessionInputSchema>;

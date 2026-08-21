@@ -4,6 +4,8 @@ import { StudyFlowDatabase } from "../src/db/database";
 import { SessionRepository } from "../src/db/sessionRepository";
 import { SettingsRepository } from "../src/db/settingsRepository";
 import { TaskRepository } from "../src/db/taskRepository";
+import { calculateGrowthStage } from "../src/domain/growth";
+import { totalFocusMs } from "../src/domain/execution";
 
 describe("V2 学习会话 Repository", () => {
   let db: StudyFlowDatabase;
@@ -62,6 +64,44 @@ describe("V2 学习会话 Repository", () => {
     expect(await sessions.finish(started.id, { outcome: "completed" }, started.revision)).toBeNull();
     expect(await db.studySessions.get(started.id)).toBeUndefined();
     expect(await db.studyIntervals.where("sessionId").equals(started.id).count()).toBe(0);
+    expect(await db.growthRecords.count()).toBe(0);
+  });
+
+  it("有效学习结束后生成一条稳定成长记录", async () => {
+    const started = await startStopwatch();
+    advance(61_000);
+    await sessions.finish(started.id, { outcome: "completed" }, started.revision);
+    expect(await db.growthRecords.where("sourceSessionId").equals(started.id).first()).toMatchObject({
+      sourceType: "study", plantType: "tree", targetSecondsSnapshot: 25 * 60,
+      localDate: "2026-08-14", timezone: "Asia/Shanghai",
+    });
+  });
+
+  it("已结束且生成植物的学习记录不能无痕 discard", async () => {
+    const started = await startStopwatch();
+    advance(61_000);
+    const finished = (await sessions.finish(started.id, { outcome: "completed" }, started.revision))!;
+    await expect(sessions.discard(finished.id)).rejects.toThrow(/不能无痕删除/);
+    expect(await db.studySessions.get(finished.id)).toBeDefined();
+    expect(await db.growthRecords.where("sourceSessionId").equals(finished.id).count()).toBe(1);
+  });
+
+  it("开始会话时拒绝无效 IANA 时区", async () => {
+    const category = (await db.categories.orderBy("sortOrder").first())!;
+    await expect(sessions.startStopwatch({
+      categoryId: category.id, title: "坏时区", timezone: "Moon/Sea-Of-Tranquility",
+    })).rejects.toThrow(/时区/);
+  });
+
+  it("存在活动冥想时不允许再开始学习", async () => {
+    const timestamp = now.toISOString();
+    await db.meditationSessions.add({
+      id: "active-meditation", mode: "free", status: "running", intention: "calm", intentionNote: "",
+      breathingPattern: "none", breathingRounds: 0, targetSeconds: null, activeIntervalId: null,
+      startedAt: timestamp, meditationStartedAt: timestamp, endedAt: null, timezone: "Asia/Shanghai",
+      feeling: null, note: "", revision: 0, createdAt: timestamp, updatedAt: timestamp,
+    });
+    await expect(startStopwatch()).rejects.toThrow(/已有进行中的/);
   });
 
   it("达到设置的 4 小时阈值后自动暂停且不会重复暂停", async () => {
@@ -260,6 +300,7 @@ describe("V2 学习会话 Repository", () => {
     ]);
     expect(results.filter((item) => item.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((item) => item.status === "rejected")).toHaveLength(1);
+    expect(await db.growthRecords.where("sourceSessionId").equals(started.id).count()).toBe(1);
   });
 
   it("完成关联任务时同步任务状态，但未勾选时保持任务未完成", async () => {
@@ -305,6 +346,19 @@ describe("V2 学习会话 Repository", () => {
       before: { session: { outcome: "completed" }, intervals: expect.any(Array) },
       after: { session: { outcome: "unfinished" }, intervals: expect.any(Array) },
     });
+  });
+
+  it("历史时间线修正后植物阶段按真实有效时长动态更新", async () => {
+    const started = await startStopwatch();
+    advance(30 * 60_000);
+    const finished = (await sessions.finish(started.id, { outcome: "completed" }, started.revision))!;
+    const record = (await db.growthRecords.where("sourceSessionId").equals(finished.id).first())!;
+    expect(calculateGrowthStage(totalFocusMs(await sessions.listIntervals(finished.id)) / 1000, record.targetSecondsSnapshot)).toBe(4);
+    const shortened = (await sessions.listIntervals(finished.id)).map((interval) => ({
+      ...interval, endedAt: "2026-08-14T00:10:00.000Z", updatedAt: "2026-08-14T00:10:00.000Z",
+    }));
+    await sessions.correct(finished.id, { intervals: shortened, reason: "修正误记时长" }, finished.revision);
+    expect(calculateGrowthStage(totalFocusMs(await sessions.listIntervals(finished.id)) / 1000, record.targetSecondsSnapshot)).toBe(2);
   });
 
   it("历史修正拒绝重叠阶段且失败时不破坏原时间线", async () => {
@@ -362,6 +416,41 @@ describe("V1 到 V2 IndexedDB migration", () => {
     expect(await upgraded.tasks.get("legacy-task")).toMatchObject({ title: "旧任务" });
     expect(await upgraded.executionSettings.get("default")).toMatchObject({ focusMinutes: 25 });
     expect(await upgraded.studySessions.count()).toBe(0);
+    await upgraded.delete();
+  });
+});
+
+describe("V2 到 V3 IndexedDB migration", () => {
+  it("保留 V2 学习会话，并创建成长与冥想数据表且不补历史植物", async () => {
+    const name = `studyflow-v2-migration-${crypto.randomUUID()}`;
+    const legacy = new Dexie(name);
+    legacy.version(2).stores({
+      tasks: "id, categoryId, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt",
+      executionSettings: "id",
+    });
+    await legacy.open();
+    const timestamp = "2026-08-14T00:00:00.000Z";
+    await legacy.table("studySessions").add({
+      id: "legacy-session", taskId: null, categoryId: "legacy-category", taskTitleSnapshot: "旧学习",
+      categoryNameSnapshot: "旧分类", estimatedMinutesSnapshot: null, goal: "", mode: "stopwatch",
+      pomodoroSettingsSnapshot: null, status: "finished", activeIntervalId: null, pomodoroRound: 1,
+      startedAt: timestamp, endedAt: "2026-08-14T00:10:00.000Z", timezone: "Asia/Shanghai",
+      outcome: "completed", failureReason: null, note: "", summary: "", revision: 1,
+      createdAt: timestamp, updatedAt: "2026-08-14T00:10:00.000Z",
+    });
+    legacy.close();
+
+    const upgraded = new StudyFlowDatabase(name);
+    await upgraded.open();
+    expect(await upgraded.studySessions.get("legacy-session")).toMatchObject({ taskTitleSnapshot: "旧学习" });
+    expect(await upgraded.growthRecords.count()).toBe(0);
+    expect(await upgraded.meditationSessions.count()).toBe(0);
+    expect(await upgraded.meditationIntervals.count()).toBe(0);
     await upgraded.delete();
   });
 });

@@ -1,5 +1,5 @@
 import type { Category, CreateCategoryInput, CreateTaskInput, Task, UpdateTaskInput } from "../domain/models";
-import { backupRepository, categoryRepository, sessionRepository, settingsRepository, taskRepository } from "../db";
+import { backupRepository, categoryRepository, growthRepository, meditationRepository, sessionRepository, settingsRepository, taskRepository } from "../db";
 
 export interface StudyFlowApi {
   tasks: {
@@ -21,6 +21,8 @@ export interface StudyFlowApi {
   };
   sessions: typeof sessionRepository;
   settings: typeof settingsRepository;
+  growth: typeof growthRepository;
+  meditation: typeof meditationRepository;
 }
 
 export const studyFlowApi: StudyFlowApi = {
@@ -29,4 +31,6 @@ export const studyFlowApi: StudyFlowApi = {
   backup: backupRepository,
   sessions: sessionRepository,
   settings: settingsRepository,
+  growth: growthRepository,
+  meditation: meditationRepository,
 };

@@ -1,5 +1,15 @@
 # StudyFlow
 
+## 视觉设计样板
+
+当前的「自然沉浸与正念成长」视觉样板通过以下地址访问：
+
+```text
+http://127.0.0.1:5173/?design-preview=1
+```
+
+样板使用本地假数据，不读取或写入 StudyFlow 的 IndexedDB。Today、Plan、Focus、学习成长树和 Meditation 已分阶段接入正式界面；样板仍使用隔离的假数据。
+
 StudyFlow 是一个 Web-first 的个人学习计划与执行助手。V2 已形成第一阶段的 `Plan → Execute → Record`：先安排学习任务，再用正计时或番茄钟执行，并把实际投入和结果保存为可审计的本地记录。
 
 ## 主要功能
@@ -19,7 +29,9 @@ StudyFlow 是一个 Web-first 的个人学习计划与执行助手。V2 已形�
 - 完成/部分完成/未完成、原因、总结和备注
 - History 日期/分类/任务/结果筛选，以及保留修改前后值的时间线修正
 - IndexedDB 本地持久化、`TaskEvent`、`StudyInterval` 和 `SessionRevision` 历史
-- V2 完整 JSON 备份、V1 备份兼容导入和覆盖导入前安全备份
+- V3 完整 JSON 备份、V1/V2 备份兼容导入和覆盖导入前安全备份
+- 学习会话驱动的五阶段成长树与 Today 花园（不会补生成升级前的历史植物）
+- Meditation 定时/自由模式、呼吸引导、冥想花和学习/冥想 History 隔离（当前仍处于 V3 交接中间态）
 
 ## 启动
 
@@ -73,8 +85,9 @@ npm install
 ## Roadmap
 
 - V1 Plan：任务、Today、四象限、分类和本地历史（已完成）
-- V2 Execution：Focus Mode、计时、番茄钟和实际学习记录（当前版本）
-- V3 Experience + PWA：离线安装、环境音和主题体验
+- V2 Execution：Focus Mode、计时、番茄钟和实际学习记录（已完成主要功能）
+- V3 Growth Garden + Meditation：成长树、Today 花园和冥想流程（本地实现，待 Windows 继续收尾）
+- V3 后续 Experience + PWA：离线安装、环境音和主题体验
 - V4 Analytics + Sync：学习统计、完成率、趋势和可选同步
 - V5 AI Planner：根据目标、可用时间和历史执行情况动态调整计划
 

@@ -59,6 +59,32 @@ test("不足一分钟的临时学习会话自动丢弃", async ({ page }) => {
   await expect(page.getByText("误触计时")).toHaveCount(0);
 });
 
+test("Focus 按真实投入成长，结束后植物进入今日花园", async ({ page }) => {
+  await openAtFixedTime(page);
+  await page.getByRole("link", { name: "Plan" }).click();
+  await page.getByRole("button", { name: "新建任务" }).click();
+  await page.getByLabel("任务标题").fill("一分钟成长实验");
+  await page.getByLabel("预计完成时长").fill("1");
+  await page.getByLabel("截止日期").fill("2026-08-14");
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.getByRole("article", { name: "一分钟成长实验" }).getByRole("button", { name: "开始学习" }).click();
+  await page.getByRole("button", { name: "进入 Focus" }).click();
+
+  await expect(page.locator(".focus-botanical .tree-stage")).toHaveClass(/stage-0/);
+  await page.clock.runFor(30_000);
+  await expect(page.locator(".focus-botanical .tree-stage")).toHaveClass(/stage-2/);
+  await page.clock.runFor(31_000);
+  await expect(page.locator(".focus-botanical .tree-stage")).toHaveClass(/stage-4/);
+  await page.getByRole("button", { name: "结束学习" }).click();
+  await page.getByRole("button", { name: "确认结束" }).click();
+  await page.getByRole("link", { name: "Today" }).click();
+
+  const garden = page.getByRole("list", { name: "今日成长植物" });
+  await expect(garden).toBeVisible();
+  await expect(garden.getByRole("listitem")).toHaveCount(1);
+  await expect(garden.getByRole("img", { name: "成熟树" })).toBeVisible();
+});
+
 test("番茄钟到时后等待确认，再进入休息阶段", async ({ page }) => {
   await openAtFixedTime(page);
   await page.getByRole("link", { name: "专注设置" }).click();
