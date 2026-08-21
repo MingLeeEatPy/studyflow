@@ -236,6 +236,37 @@ export const meditationIntervalSchema = z.object({
   sleepGaps: z.array(sleepGapSchema),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
+}).superRefine((value, ctx) => {
+  const start = Date.parse(value.startedAt);
+  const end = value.endedAt ? Date.parse(value.endedAt) : null;
+  if (end !== null && end < start) ctx.addIssue({ code: "custom", path: ["endedAt"], message: "冥想阶段结束时间不能早于开始时间" });
+  value.pauses.forEach((pause, index) => {
+    const pauseStart = Date.parse(pause.startedAt);
+    const pauseEnd = pause.endedAt ? Date.parse(pause.endedAt) : null;
+    if (pauseStart < start || (end !== null && (pauseEnd ?? Number.POSITIVE_INFINITY) > end)) {
+      ctx.addIssue({ code: "custom", path: ["pauses", index], message: "暂停区间必须位于冥想阶段内" });
+    }
+  });
+  value.sleepGaps.forEach((gap, index) => {
+    if (Date.parse(gap.from) < start || (end !== null && Date.parse(gap.to) > end)) {
+      ctx.addIssue({ code: "custom", path: ["sleepGaps", index], message: "休眠区间必须位于冥想阶段内" });
+    }
+  });
+});
+
+export const startMeditationInputSchema = z.object({
+  mode: meditationModeSchema,
+  targetMinutes: z.number().int().min(1).max(180).nullable(),
+  intention: meditationIntentionSchema,
+  intentionNote: z.string().trim().max(200).default(""),
+  breathingPattern: breathingPatternSchema,
+  timezone: timeZoneSchema,
+}).refine((value) => value.mode === "free" ? value.targetMinutes === null : value.targetMinutes !== null,
+  "定时冥想必须设置时长，自由冥想不能设置固定时长");
+
+export const finishMeditationInputSchema = z.object({
+  feeling: z.number().int().min(1).max(5).nullable().default(null),
+  note: z.string().trim().max(2000).default(""),
 });
 
 export const startSessionInputSchema = z.object({
@@ -281,5 +312,7 @@ export type MeditationIntention = z.infer<typeof meditationIntentionSchema>;
 export type BreathingPattern = z.infer<typeof breathingPatternSchema>;
 export type MeditationSession = z.infer<typeof meditationSessionSchema>;
 export type MeditationInterval = z.infer<typeof meditationIntervalSchema>;
+export type StartMeditationInput = z.input<typeof startMeditationInputSchema>;
+export type FinishMeditationInput = z.input<typeof finishMeditationInputSchema>;
 export type StartSessionInput = z.input<typeof startSessionInputSchema>;
 export type FinishSessionInput = z.input<typeof finishSessionInputSchema>;

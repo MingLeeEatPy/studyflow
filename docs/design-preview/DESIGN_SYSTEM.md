@@ -1,6 +1,6 @@
 # StudyFlow「自然沉浸与正念成长」视觉设计系统
 
-状态：视觉方向已确认，第二阶段已将设计 token 与 Today、Plan、Focus 接入正式页面；第三阶段已接入学习成长记录、Focus 实时树和 Today 花园。该目录中的 `?design-preview=1` 仍使用完全隔离的假数据；Meditation 正式流程留在下一 Batch。
+状态：视觉方向已确认，设计 token 已接入 Today、Plan、Focus、成长树和 Meditation 正式页面。该目录中的 `?design-preview=1` 仍使用完全隔离的假数据，不读写正式 IndexedDB。V3 Meditation 代码目前处于交接中间态，详见仓库根目录的 `CODEX_HANDOFF.md`。
 
 ## 1. 设计原则
 
@@ -73,7 +73,7 @@ StudyFlow 是一个安静、自然、克制、有呼吸感的学习与正念空�
 
 - 本地晨雾水面背景比 Focus 更柔和、更开放。
 - 设置、呼吸、冥想、复盘是四个连续但可跳过的状态。
-- 呼吸光圈只有缓慢缩放和文字提示，不依赖声音表达阶段。
+- 呼吸光圈使用缓慢缩放和文字提示；声音提示应作为可选增强，不能成为理解阶段的唯一方式。
 - 感受选择不使用“好/坏”评价，不强迫填写备注。
 
 ## 5. 成长系统
@@ -112,6 +112,6 @@ Today / 侧边栏 / 快速开始
 
 1. ~~正式视觉 token 与 Today / Plan / Focus 改造~~
 2. IndexedDB version 3、备份 version 3、成长记录与今日花园（已完成）
-3. Meditation 数据层、完整流程、History 类型隔离（下一 Batch）
+3. Meditation 状态边界、备份校验、异常恢复与无障碍收尾（待 Windows Codex 继续）
 
 每阶段单独验收，禁止在视觉改造阶段顺带修改正式数据模型。

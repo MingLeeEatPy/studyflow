@@ -26,4 +26,6 @@ export type {
   MeditationStatus,
   MeditationIntention,
   BreathingPattern,
+  StartMeditationInput,
+  FinishMeditationInput,
 } from "../../shared/schemas/models";

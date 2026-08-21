@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { StudyFlowDatabase } from '../src/db/database';
 import { BackupRepository } from '../src/db/backupRepository';
+import { MeditationRepository } from '../src/db/meditationRepository';
 import { SessionRepository } from '../src/db/sessionRepository';
 
 describe('完整导出与覆盖导入', () => {
@@ -120,6 +121,47 @@ describe('完整导出与覆盖导入', () => {
     expect(await db.studySessions.get(started.id)).toMatchObject({ outcome: 'completed' });
     expect(await db.studyIntervals.where('sessionId').equals(started.id).count()).toBe(1);
     expect(await db.growthRecords.where('sourceSessionId').equals(started.id).count()).toBe(1);
+  });
+
+  it('导出运行中的冥想前自动暂停，并保存暂停边界', async () => {
+    const meditation = new MeditationRepository(db);
+    const started = await meditation.start({
+      mode: 'free', targetMinutes: null, intention: 'calm', intentionNote: '',
+      breathingPattern: 'none', timezone: 'Asia/Shanghai',
+    });
+    const exported = await backups.exportData();
+    expect(exported.data.meditationSessions).toMatchObject([{
+      id: started.id, status: 'paused', revision: 1,
+    }]);
+    expect(exported.data.meditationIntervals).toMatchObject([{
+      sessionId: started.id, kind: 'meditation', pauses: [{ startedAt: expect.any(String), endedAt: null }],
+    }]);
+    expect(await db.meditationSessions.get(started.id)).toMatchObject({ status: 'paused', revision: 1 });
+  });
+
+  it('V3 冥想 session、interval 和成长花朵可完整恢复', async () => {
+    let now = new Date('2026-08-14T00:00:00.000Z');
+    let sequence = 0;
+    const meditation = new MeditationRepository(db, () => new Date(now), () => `backup-meditation-${++sequence}`);
+    const started = await meditation.start({
+      mode: 'timed', targetMinutes: 5, intention: 'self-care', intentionNote: '照顾自己',
+      breathingPattern: 'none', timezone: 'Asia/Shanghai',
+    });
+    now = new Date('2026-08-14T00:01:01.000Z');
+    await meditation.finish(started.id, { feeling: 5, note: '轻松一些' }, started.revision);
+    const exported = await backups.exportData();
+
+    await db.meditationSessions.clear();
+    await db.meditationIntervals.clear();
+    await db.growthRecords.clear();
+    await backups.replaceAll(exported);
+    expect(await db.meditationSessions.get(started.id)).toMatchObject({
+      status: 'finished', feeling: 5, note: '轻松一些',
+    });
+    expect(await db.meditationIntervals.where('sessionId').equals(started.id).count()).toBe(1);
+    expect(await db.growthRecords.where('sourceSessionId').equals(started.id).first()).toMatchObject({
+      sourceType: 'meditation', plantType: 'flower', targetSecondsSnapshot: 300,
+    });
   });
 
   it('拒绝破坏成长领域不变量的 V3 备份，且不改变当前数据', async () => {

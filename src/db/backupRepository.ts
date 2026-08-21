@@ -37,6 +37,20 @@ export class BackupRepository {
         await this.database.studySessions.update(current.id, { status: "paused", revision: current.revision + 1, updatedAt: now });
       });
     }
+    const activeMeditation = await this.database.meditationSessions.where("status").anyOf("breathing", "running", "paused", "sleep-review").first();
+    if (activeMeditation?.status === "running" && activeMeditation.activeIntervalId) {
+      await this.database.transaction("rw", this.database.meditationSessions, this.database.meditationIntervals, async () => {
+        const current = await this.database.meditationSessions.get(activeMeditation.id);
+        if (!current || current.status !== "running" || current.revision !== activeMeditation.revision || !current.activeIntervalId) return;
+        const now = new Date().toISOString();
+        const interval = await this.database.meditationIntervals.get(current.activeIntervalId);
+        if (interval) {
+          interval.pauses.push({ startedAt: now, endedAt: null }); interval.updatedAt = now;
+          await this.database.meditationIntervals.put(interval);
+        }
+        await this.database.meditationSessions.update(current.id, { status: "paused", revision: current.revision + 1, updatedAt: now });
+      });
+    }
     const [tasks, categories, taskEvents, studySessions, studyIntervals, sessionRevisions, executionSettings, growthRecords, meditationSessions, meditationIntervals] = await Promise.all([
       this.database.tasks.toArray(),
       this.database.categories.toArray(),

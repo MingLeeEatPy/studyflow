@@ -3,11 +3,22 @@ import type { Category, Task } from "../domain/models";
 import { calculateTodayStats, selectTodayTasks } from "../domain/today";
 import { TaskCard } from "../components/TaskCard";
 import type { StudySession } from "../features/executionTypes";
-import type { GrowthRecord } from "../../shared/schemas/models";
+import type { GrowthRecord, MeditationSession } from "../../shared/schemas/models";
 import { executionAdapter } from "../features/executionAdapter";
 import { sessionFocusSecondsOnLocalDate, totalFocusMs } from "../domain/execution";
 import { calculateGrowthStage, type GrowthStage } from "../domain/growth";
 import { PlantIllustration } from "../components/PlantIllustration";
+import { meditationAdapter } from "../features/meditationAdapter";
+import { totalMeditationMs } from "../domain/meditation";
+
+const meditationIntentions: Record<MeditationSession["intention"], string> = {
+  calm: "平静冥想",
+  refocus: "恢复专注",
+  observe: "观察情绪",
+  "self-care": "自我关怀",
+  rest: "安静休息",
+  other: "自由冥想",
+};
 
 interface GardenPlant {
   record: GrowthRecord;
@@ -15,14 +26,53 @@ interface GardenPlant {
   label: string;
 }
 
-export function TodayPage({ tasks, categories, sessions = [], growthRecords = [], taskActualMinutes = {}, activeSession, now = Date.now(), onToggle, onEdit, onDelete, onNew, onStart }: { tasks: Task[]; categories: Category[]; sessions?: StudySession[]; growthRecords?: GrowthRecord[]; sessionDurations?: Record<string,number>; taskActualMinutes?: Record<string,number>; activeSession?: StudySession | null; now?: number; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void }) {
-  const [execution, setExecution] = useState<{ actualSeconds: number; taskMinutes: Record<string, number>; active: StudySession | null; garden: GardenPlant[]; gardenTotal: number }>({ actualSeconds: 0, taskMinutes: taskActualMinutes, active: activeSession ?? null, garden: [], gardenTotal: 0 });
+export function TodayPage({ tasks, categories, sessions = [], meditationSessions, growthRecords = [], taskActualMinutes = {}, activeSession, activeMeditation, now = Date.now(), onToggle, onEdit, onDelete, onNew, onStart }: { tasks: Task[]; categories: Category[]; sessions?: StudySession[]; meditationSessions?: MeditationSession[]; growthRecords?: GrowthRecord[]; sessionDurations?: Record<string,number>; taskActualMinutes?: Record<string,number>; activeSession?: StudySession | null; activeMeditation?: MeditationSession | null; now?: number; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; onNew: () => void; onStart?: (task: Task) => void }) {
+  const [execution, setExecution] = useState<{ actualSeconds: number; taskMinutes: Record<string, number>; active: StudySession | null; meditationActive: MeditationSession | null; garden: GardenPlant[]; gardenTotal: number }>({ actualSeconds: 0, taskMinutes: taskActualMinutes, active: activeSession ?? null, meditationActive: activeMeditation ?? null, garden: [], gardenTotal: 0 });
   const todayTasks = selectTodayTasks(tasks);
   const stats = calculateTodayStats(tasks);
   const categoryMap = new Map(categories.map((item) => [item.id, item]));
   const localToday = new Date().toLocaleDateString("en-CA");
   const minuteTick = Math.floor(now / 60_000);
-  useEffect(() => { let cancelled = false; void (async () => { const active = await executionAdapter.getActive(); const history = sessions.length ? sessions : await executionAdapter.history(); const all = active ? [...history, active] : history; const intervalGroups = await Promise.all(all.map((item) => executionAdapter.listIntervals(item.id))); const actualSeconds = all.reduce((sum, item, index) => sum + sessionFocusSecondsOnLocalDate(item, intervalGroups[index], localToday), 0); const taskSeconds: Record<string, number> = {}; all.forEach((item, index) => { if (item.taskId) taskSeconds[item.taskId] = (taskSeconds[item.taskId] ?? 0) + totalFocusMs(intervalGroups[index]) / 1000; }); const sessionIndex = new Map(all.map((item, index) => [item.id, { session: item, intervals: intervalGroups[index] }])); const gardenCandidates = growthRecords.filter((record) => record.localDate === localToday).flatMap((record): GardenPlant[] => { if (record.sourceType !== "study") return []; const source = sessionIndex.get(record.sourceSessionId); if (!source) return []; return [{ record, stage: calculateGrowthStage(totalFocusMs(source.intervals) / 1000, record.targetSecondsSnapshot), label: source.session.taskTitleSnapshot }]; }); if (!cancelled) setExecution({ actualSeconds, taskMinutes: Object.fromEntries(Object.entries(taskSeconds).map(([id, seconds]) => [id, Math.round(seconds / 60)])), active, garden: gardenCandidates.slice(0, 8), gardenTotal: gardenCandidates.length }); })(); return () => { cancelled = true; }; }, [sessions, growthRecords, localToday, minuteTick]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [active, meditationActive, history, meditationHistory] = await Promise.all([
+        executionAdapter.getActive(),
+        meditationAdapter.getActive().then((value) => value ?? null),
+        sessions.length ? Promise.resolve(sessions) : executionAdapter.history(),
+        meditationSessions === undefined ? meditationAdapter.history() : Promise.resolve(meditationSessions),
+      ]);
+      const all = active ? [...history, active] : history;
+      const intervalGroups = await Promise.all(all.map((item) => executionAdapter.listIntervals(item.id)));
+      const meditationIntervalGroups = await Promise.all(meditationHistory.map((item) => meditationAdapter.listIntervals(item.id)));
+      const actualSeconds = all.reduce((sum, item, index) => sum + sessionFocusSecondsOnLocalDate(item, intervalGroups[index], localToday), 0);
+      const taskSeconds: Record<string, number> = {};
+      all.forEach((item, index) => {
+        if (item.taskId) taskSeconds[item.taskId] = (taskSeconds[item.taskId] ?? 0) + totalFocusMs(intervalGroups[index]) / 1000;
+      });
+      const studyIndex = new Map(all.map((item, index) => [item.id, { session: item, intervals: intervalGroups[index] }]));
+      const meditationIndex = new Map(meditationHistory.map((item, index) => [item.id, { session: item, intervals: meditationIntervalGroups[index] }]));
+      const gardenCandidates = growthRecords.filter((record) => record.localDate === localToday).flatMap((record): GardenPlant[] => {
+        if (record.sourceType === "study") {
+          const source = studyIndex.get(record.sourceSessionId);
+          if (!source) return [];
+          return [{ record, stage: calculateGrowthStage(totalFocusMs(source.intervals) / 1000, record.targetSecondsSnapshot), label: source.session.taskTitleSnapshot }];
+        }
+        const source = meditationIndex.get(record.sourceSessionId);
+        if (!source) return [];
+        return [{ record, stage: calculateGrowthStage(totalMeditationMs(source.intervals) / 1000, record.targetSecondsSnapshot), label: meditationIntentions[source.session.intention] }];
+      });
+      if (!cancelled) setExecution({
+        actualSeconds,
+        taskMinutes: Object.fromEntries(Object.entries(taskSeconds).map(([id, seconds]) => [id, Math.round(seconds / 60)])),
+        active,
+        meditationActive: meditationActive ?? null,
+        garden: gardenCandidates.slice(0, 8),
+        gardenTotal: gardenCandidates.length,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [sessions, meditationSessions, growthRecords, localToday, minuteTick]);
   const actualMinutes = Math.round(execution.actualSeconds / 60);
   const pendingCount = todayTasks.filter((item) => !item.completed).length;
   const completedCount = todayTasks.length - pendingCount;
@@ -45,6 +95,7 @@ export function TodayPage({ tasks, categories, sessions = [], growthRecords = []
         {execution.garden.length ? <div className="today-garden" role="list" aria-label="今日成长植物">{execution.garden.map(({ record, stage, label }) => <article key={record.id} role="listitem" title={label}><PlantIllustration kind={record.plantType} stage={stage} variant={record.variant}/><span>{label}</span></article>)}</div> : <div className="today-garden-empty" aria-hidden="true"><PlantIllustration kind="tree" stage={0} variant={0}/></div>}
         {execution.gardenTotal > 8 && <small className="today-garden-more">另有 {execution.gardenTotal - 8} 株植物</small>}
         {execution.active && <div className="today-active"><span className="today-active-dot"/><span><small>正在学习</small><strong>{execution.active.taskTitleSnapshot}</strong></span><b>{execution.active.mode === "pomodoro" ? `第 ${execution.active.pomodoroRound} 轮` : "正计时"}</b></div>}
+        {!execution.active && execution.meditationActive && <div className="today-active"><span className="today-active-dot"/><span><small>正在冥想</small><strong>{meditationIntentions[execution.meditationActive.intention]}</strong></span><b>{execution.meditationActive.status === "breathing" ? "呼吸引导" : execution.meditationActive.mode === "timed" ? "定时" : "自由计时"}</b></div>}
       </aside>
     </section>
     <section className="section-heading today-list-heading"><div><h2>今日任务</h2><p>{pendingCount} 项待完成 · {completedCount} 项已完成</p></div></section>

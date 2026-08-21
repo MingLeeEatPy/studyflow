@@ -60,3 +60,17 @@ export function createStudyGrowthRecord(session: StudySession, id: string, compl
     createdAt: completedAt,
   });
 }
+
+export function createMeditationGrowthRecord(session: MeditationSession, id: string, completedAt: string): GrowthRecord {
+  return growthRecordSchema.parse({
+    id,
+    sourceType: "meditation",
+    sourceSessionId: session.id,
+    plantType: "flower",
+    variant: stablePlantVariant(session.id),
+    targetSecondsSnapshot: meditationGrowthTargetSeconds(session),
+    localDate: localDateInTimezone(completedAt, session.timezone),
+    timezone: session.timezone,
+    createdAt: completedAt,
+  });
+}

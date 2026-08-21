@@ -94,6 +94,30 @@ test("Focus 暂停、超时和三按钮状态在手机宽度保持清晰", async
   await expectNoButtonOverlap(page);
 });
 
+test("Meditation 的入口、沉浸计时与复盘在桌面和手机宽度保持稳定", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.clock.install({ time: FIXED_TIME });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Meditation" }).click();
+  await expect(page.getByRole("heading", { name: "给思绪留一点安静" })).toBeVisible();
+  await expect(page).toHaveScreenshot("meditation-entry-desktop.png", { animations: "disabled", maxDiffPixels: 150 });
+
+  await page.getByLabel("自定义冥想分钟").fill("1");
+  await page.getByLabel("呼吸引导").selectOption("none");
+  await page.getByRole("button", { name: "进入 Meditation" }).click();
+  await page.clock.runFor(31_000);
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 250));
+  await expect(page.getByText("正在冥想", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("meditation-focus-desktop.png", { animations: "disabled", maxDiffPixels: 150 });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page).toHaveScreenshot("meditation-focus-mobile.png", { animations: "disabled", maxDiffPixels: 150 });
+  await page.getByRole("button", { name: "结束冥想" }).click();
+  await expect(page.getByRole("dialog", { name: "结束本次冥想" })).toBeVisible();
+  await expect(page).toHaveScreenshot("meditation-review-mobile.png", { animations: "disabled", maxDiffPixels: 150 });
+});
+
 async function expectNoButtonOverlap(page: Page) {
   const boxes = await page.locator(".focus-actions > .button").evaluateAll((buttons) => buttons.map((button) => {
     const box = button.getBoundingClientRect();
