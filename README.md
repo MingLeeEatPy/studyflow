@@ -1,122 +1,108 @@
 # StudyFlow
 
-## 视觉设计样板
+> 把学习的计划、开始、记录和复盘，放在同一条路上。
 
-当前的「自然沉浸与正念成长」视觉样板通过以下地址访问：
+## 立即体验
+
+**[打开 StudyFlow](https://studyflow.2442066641.workers.dev)**
+
+无需下载，无需注册。用浏览器打开后，创建一件今天真实要做的事即可开始；觉得顺手时，也可以把它安装到手机或桌面，像普通 App 一样使用。
+
+## 它解决什么问题
+
+学习工具通常不缺：待办、日历、番茄钟、笔记各有一个。难的是把“想做”“开始做”“实际做了多少”和“下次怎么调整”接起来。
+
+StudyFlow 是一个本地优先的个人学习工具。它不替你决定人生计划，只把一次学习从安排到复盘的过程留下来：
 
 ```text
-http://127.0.0.1:5173/?design-preview=1
+目标与任务 → 今天先做什么 → 专注执行 → 如实记录 → 回看与调整
 ```
 
-样板使用本地假数据，不读取或写入 StudyFlow 的 IndexedDB。Today、Plan、Focus、学习成长树和 Meditation 已分阶段接入正式界面；样板仍使用隔离的假数据。
+## 30 秒开始
 
-StudyFlow 是一个 Web-first 的个人学习计划与执行助手。V2 已形成第一阶段的 `Plan → Execute → Record`：先安排学习任务，再用正计时或番茄钟执行，并把实际投入和结果保存为可审计的本地记录。
+1. 在 **目标树**、**计划中心** 或 **Today** 新建一件真实任务，例如“高数第 3 章习题 30 分钟”。
+2. 在 **Today** 选定下一件要做的事。
+3. 点击开始，使用正计时或番茄钟进入 **Focus**。
+4. 结束时如实选择完成、部分完成或未完成，并留下必要的原因或备注。
+5. 在 **History** 与每日复盘中查看今天实际投入了什么。
 
 ## 主要功能
 
-- 新建、编辑、完成、重新打开和归档任务
-- 四象限看板与任务列表切换
-- 分类、状态和截止日期筛选
-- Today 今日/逾期任务、计划时长、实际专注、完成数量和当前会话
-- 独立分类管理
-- 从任务或临时学习记录开始 `Stopwatch`（正计时）或 `Pomodoro`（番茄钟）
-- Focus Mode、全局迷你计时栏、暂停、恢复、跳过休息和结束
-- 番茄专注到时播放提示音；未开始休息时自动进入超时正计时并继续记录实际专注
-- 全局番茄默认值，以及开始学习时独立覆盖本次专注/休息时长和每组轮数
-- Focus 中可调整本次会话的后续番茄阶段，不影响当前阶段或其他会话
-- 可开关提示音、调节并试听音量，以及启用浏览器通知
-- 休眠或明显时间跳跃确认、多标签页状态同步和刷新恢复
-- 完成/部分完成/未完成、原因、总结和备注
-- History 日期/分类/任务/结果筛选，以及保留修改前后值的时间线修正
-- IndexedDB 本地持久化、`TaskEvent`、`StudyInterval` 和 `SessionRevision` 历史
-- V3 完整 JSON 备份、V1/V2 备份兼容导入和覆盖导入前安全备份
-- 学习会话驱动的五阶段成长树与 Today 花园（不会补生成升级前的历史植物）
-- Meditation 定时/自由模式、呼吸引导、冥想花和学习/冥想 History 隔离（当前仍处于 V3 交接中间态）
+### 计划，不只是列清单
 
-## 启动
+- 用月度目标、周里程碑和今日行动组织学习事项。
+- 通过四象限、任务列表、分类、状态和日期筛选理清优先级。
+- 在 Today 同时看到今天的任务、预计时长、实际专注和完成情况。
 
-项目固定使用用户目录中的 Node.js 24.19.0。Ubuntu 上直接运行：
+### 专注，记录真实发生的学习
 
-```bash
-cd /home/minglee/Projects/studyflow
-./studyflow.sh
-```
+- 支持正计时与番茄钟，以及暂停、恢复、休息和结束。
+- 番茄钟可设置专注时长、休息时长与轮数；实际专注时间单独记录。
+- 进行中的会话会在页面刷新和多标签页间恢复，方便从中断处回来。
 
-浏览器访问 `http://127.0.0.1:5173`。
+### 记录与复盘，方便下次做得更贴近现实
 
-其他命令：
+- 记录完成结果、部分完成或未完成的原因、总结与备注。
+- 在 History 按日期、分类、任务和结果回看学习与冥想记录。
+- 支持带原因的记录修正，保留修改前后的时间线。
 
-```bash
-./studyflow.sh typecheck
-./studyflow.sh test
-./studyflow.sh lint
-./studyflow.sh e2e
-./studyflow.sh build
-```
+### 为持续投入留一点看得见的反馈
 
-## 数据与备份
+- 学习会话驱动成长树与 Today 花园，今天的投入会留下生长记录。
+- 内置定时或自由 Meditation、呼吸引导与冥想复盘；冥想和学习分别计时、统一回看。
 
-数据保存在当前浏览器的 IndexedDB 中。刷新页面或关闭浏览器后会恢复任务与活动会话；StudyFlow 也会尝试申请浏览器持久存储。不同浏览器、不同网址和不同设备之间不会自动共享，浏览器数据清理仍可能删除本地数据。
+## 数据与隐私
 
-建议定期点击应用左下角“数据管理”并导出 JSON。覆盖导入前，StudyFlow 会先触发下载一份当前数据的安全备份；无效或不兼容的文件不会修改现有数据库。
+StudyFlow 当前没有账号和云同步。数据默认保存在你正在使用的浏览器中（IndexedDB）：
 
-任务在 UI 中删除后会归档而不是物理清除。任务事件、学习会话、专注/休息/暂停区间以及有原因的修正历史都会保留，为后续完成率、预计与实际时间、周报和趋势分析提供数据基础。
+- 同一浏览器内刷新或关闭后，任务与进行中的会话会尝试恢复。
+- 不同设备、浏览器和网址之间不会自动同步。
+- 清除浏览器站点数据可能删除记录；请定期在“数据管理”中导出 JSON 备份。
+- 覆盖导入前，应用会先为当前数据创建一份安全备份。
 
-## V2 使用流程
+## 安装为 PWA（可选）
 
-1. 在 `Plan` 创建任务，或点击左下角“开始学习”建立临时记录。
-2. 选择正计时或番茄钟；番茄钟可以沿用全局默认值，也可以为这次学习单独设置专注、休息和轮数。
-3. 使用暂停、继续、跳过休息或结束。番茄专注到时会播放提示音；如果尚未开始休息，页面会转为超时正计时并继续累计实际专注。在 Focus 中修改本次番茄设置时，当前阶段保持不变，后续阶段使用新值。离开 Focus 后可通过底部迷你栏返回。
-4. 结束时选择结果；部分完成或未完成必须说明原因。
-5. 在 `History` 查看和筛选记录。如需修正，必须填写修正原因，原值不会被无痕覆盖。
-6. 定期从“数据管理”导出 JSON 备份。
+打开上方体验链接后：
 
-计时以持久化 UTC 时间戳为准。休息、暂停和被排除的休眠时间不计入实际专注；跨午夜时按会话记录的本地时区分配到对应日期。
+- **iPhone / iPad**：使用 Safari 的“分享” → “添加到主屏幕”。
+- **Android**：使用 Chrome 菜单中的“安装应用”或“添加到主屏幕”。
+- **Windows / macOS**：使用 Chrome 或 Edge 地址栏附近的安装按钮；没有按钮时，继续用网页即可。
 
-## 开发
+安装不等于云同步。首次在线打开后，已缓存的页面可在离线时使用；本地数据仍只保存在当前浏览器中。
 
-首次重新安装依赖时：
+## 本地运行
+
+需要 Node.js 24 或更高版本。
 
 ```bash
-export PATH="$HOME/.local/opt/node-v24.19.0-linux-x64/bin:$PATH"
+git clone https://github.com/MingLeeEatPy/studyflow.git
+cd studyflow
 npm install
+npm run dev
 ```
 
-## Roadmap
+随后访问终端显示的本地地址（默认是 `http://127.0.0.1:5173`）。
 
-- V1 Plan：任务、Today、四象限、分类和本地历史（已完成）
-- V2 Execution：Focus Mode、计时、番茄钟和实际学习记录（已完成主要功能）
-- V3 Growth Garden + Meditation：成长树、Today 花园和冥想流程（本地实现，待 Windows 继续收尾）
-- V3 后续 Experience + PWA：离线安装、环境音和主题体验
-- V4 Analytics + Sync：学习统计、完成率、趋势和可选同步
-- V5 AI Planner：根据目标、可用时间和历史执行情况动态调整计划
+常用检查命令：
+
+```bash
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+```
+
+## 反馈与参与
+
+遇到“看不懂、找不到入口、点了没反应，或不知道下一步该做什么”的时刻，都欢迎提交反馈。请尽量附上：
+
+- 截图或录屏；
+- 你原本想完成的事；
+- 设备与浏览器信息。
+
+可以通过 [Issues](https://github.com/MingLeeEatPy/studyflow/issues) 提交问题或建议，也欢迎 Fork 后提交 Pull Request。
 
 ## License
 
-## PWA installation and offline use
+[MIT License](./LICENSE)
 
-StudyFlow is installable after deployment on **HTTPS** (or when using `localhost`). Personal data remains in this browser's IndexedDB: installation does not add cloud sync, so export a JSON backup before changing browser, device, or site address.
-
-### Windows (Edge or Chrome)
-
-1. Open the deployed StudyFlow HTTPS address and let it load once online.
-2. In Edge, choose **… → Apps → Install StudyFlow**. In Chrome, choose the address-bar install icon or **⋮ → Install StudyFlow**.
-3. Launch the standalone app from the Start menu or desktop shortcut. It can reopen offline after its first online load.
-
-### Android (Chrome)
-
-1. Open the same HTTPS address in Chrome while online.
-2. Tap **⋮ → Install app** (or **Add to Home screen**) and confirm.
-3. Open the new home-screen icon. The first load and version updates require connectivity; cached screens and local data work offline.
-
-### Update and acceptance check
-
-- A waiting update is shown as a prompt. Select **Refresh update** only at a natural break; StudyFlow never reloads an active focus or meditation session by itself.
-- Manual test: install, create a task, close the app, disable network, reopen it, and verify the task and navigation still load.
-- Automated PWA test: `npm.cmd run test:e2e -- e2e/pwa.spec.ts`.
-
-### 提醒的边界
-
-StudyFlow 会在前台播放提示音，并在已授权时发送系统通知；恢复到前台后始终用真实时间戳校正计时状态。纯 PWA 可能被浏览器或系统在长时间后台、锁屏后冻结，因此无法承诺准点声音。需要可靠锁屏提醒时，应使用后续的原生封装或推送服务。
-
-StudyFlow 使用 [MIT License](./LICENSE)。
