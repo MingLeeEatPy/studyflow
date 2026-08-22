@@ -21,7 +21,7 @@ export function MeditationPage({ history, durations, onStart }: { history: Medit
     finally { setBusy(false); }
   }
   return <>
-    <header className="page-header nature-page-header"><div><p className="eyebrow">Meditation</p><h1>给思绪留一点安静</h1><p>不追求表现，只练习回到此刻。</p></div></header>
+    <header className="page-header nature-page-header"><div><p className="eyebrow">Meditation</p><h1>风恬浪静中，见人生之真境；味淡声希处，识心体之本然。</h1><p>不追求表现，只练习回到此刻。</p></div></header>
     <section className="meditation-entry">
       <div className="meditation-entry-art" aria-hidden="true"><PlantIllustration kind="flower" stage={4} variant={1}/></div>
       <form className="meditation-start-card" onSubmit={(event) => void submit(event)}>

@@ -9,7 +9,7 @@ async function openAtFixedTime(page: Page) {
 
 async function openMeditation(page: Page) {
   await page.getByRole("link", { name: "Meditation" }).click();
-  await expect(page.getByRole("heading", { name: "给思绪留一点安静" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "风恬浪静中，见人生之真境；味淡声希处，识心体之本然。" })).toBeVisible();
 }
 
 async function startOneMinuteMeditation(page: Page, breathing: "guided" | "none" = "none") {

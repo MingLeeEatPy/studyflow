@@ -52,7 +52,7 @@ test("Today、Plan、Focus 的正式视觉在桌面和手机宽度保持稳定",
 test("正式视觉支持键盘焦点与减少动画", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "今天，按自己的节奏前进" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "闲时要有吃紧的心思，忙处要有悠闲的趣味。" })).toBeVisible();
   await page.keyboard.press("Tab");
   const todayLink = page.getByRole("link", { name: "Today" });
   await expect(todayLink).toBeFocused();
@@ -100,7 +100,7 @@ test("Meditation 的入口、沉浸计时与复盘在桌面和手机宽度保持
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await page.getByRole("link", { name: "Meditation" }).click();
-  await expect(page.getByRole("heading", { name: "给思绪留一点安静" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "风恬浪静中，见人生之真境；味淡声希处，识心体之本然。" })).toBeVisible();
   await expect(page).toHaveScreenshot("meditation-entry-desktop.png", { animations: "disabled", maxDiffPixels: 150 });
 
   await page.getByLabel("自定义冥想分钟").fill("1");
