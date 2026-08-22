@@ -97,6 +97,25 @@ export class StudyFlowDatabase extends Dexie {
       planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
       dailyReviews: "id, &localDate, updatedAt",
     });
+    this.version(6).stores({
+      tasks: "id, categoryId, planId, isCoreTask, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt", executionSettings: "id",
+      growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
+      meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
+      meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
+      planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
+      dailyReviews: "id, &localDate, updatedAt",
+    }).upgrade(async (tx) => {
+      await tx.table<ExecutionSettings, string>("executionSettings").toCollection().modify((value) => {
+        value.ambientSound ??= "off";
+        value.ambientVolume ??= 50;
+        value.completionSound ??= "wind-chime";
+      });
+    });
 
     this.on("populate", () => {
       const timestamp = nowIso();
@@ -118,7 +137,8 @@ export class StudyFlowDatabase extends Dexie {
 export function defaultExecutionSettings(at = nowIso()): ExecutionSettings {
   return {
     id: "default", focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15,
-    roundsPerSet: 4, soundEnabled: true, soundVolume: 80, notificationsEnabled: false,
+    roundsPerSet: 4, soundEnabled: true, soundVolume: 80, ambientSound: "off", ambientVolume: 50,
+    completionSound: "wind-chime", notificationsEnabled: false,
     stopwatchAutoPauseMinutes: 240, updatedAt: at,
   };
 }
