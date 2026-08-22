@@ -100,7 +100,7 @@ export function HistoryPage({ sessions, durations, meditationSessions, meditatio
       <div>
         <p className="eyebrow">执行记录</p>
         <h1>学习与冥想历史</h1>
-        <p>学习和冥想分别计时，也共同留下真实投入的轨迹。</p>
+        <p>风来疏竹，风过而竹不留声；雁度寒潭，雁过而潭不留影。</p>
       </div>
       <button className="button secondary" onClick={refresh}>刷新记录</button>
     </header>

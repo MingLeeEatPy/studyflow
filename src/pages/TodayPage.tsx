@@ -79,7 +79,7 @@ export function TodayPage({ tasks, categories, sessions = [], meditationSessions
   const completedCount = todayTasks.length - pendingCount;
   const completionPercent = stats.plannedMinutes > 0 ? Math.min(100, Math.round((stats.completedMinutes / stats.plannedMinutes) * 100)) : 0;
   return <>
-    <header className="page-header nature-page-header"><div><p className="eyebrow">{new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(new Date())}</p><h1>今天，按自己的节奏前进</h1><p>把注意力放在下一件真正重要的事上。</p></div><button className="button primary" onClick={onNew}>＋ 新建任务</button></header>
+    <header className="page-header nature-page-header"><div><p className="eyebrow">{new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(new Date())}</p><h1>闲时要有吃紧的心思，忙处要有悠闲的趣味。</h1><p>把注意力放在下一件真正重要的事上。</p></div><button className="button primary" onClick={onNew}>＋ 新建任务</button></header>
     <section className="today-overview">
       <article className="today-summary-glass" aria-label="今日时长统计">
         <header><div><span>今日计划</span><strong><b data-testid="planned-minutes">{stats.plannedMinutes}</b> 分钟</strong></div><small>{completionPercent >= 100 ? "今日计划已完成" : completionPercent > 0 ? "稳定推进" : "从第一步开始"}</small></header>
@@ -92,7 +92,7 @@ export function TodayPage({ tasks, categories, sessions = [], meditationSessions
         </div>
       </article>
       <aside className="today-rhythm-card today-garden-card">
-        <div><span className="today-rhythm-label">今日花园</span><h2>{execution.gardenTotal ? `今天长出了 ${execution.gardenTotal} 株植物` : "专注会在这里留下痕迹"}</h2><p>{execution.gardenTotal ? "每一株都对应一段真实投入的时间。" : "完成至少 1 分钟的学习，种下今天的第一棵树。"}</p></div>
+        <div><span className="today-rhythm-label">今日花园</span><h2>{execution.gardenTotal ? `今天长出了 ${execution.gardenTotal} 株植物` : "春至时和，花尚铺一段好色，鸟且啭几句好音。"}</h2><p>{execution.gardenTotal ? "每一株都对应一段真实投入的时间。" : "完成至少 1 分钟的学习，种下今天的第一棵树。"}</p></div>
         {execution.garden.length ? <div className="today-garden" role="list" aria-label="今日成长植物">{execution.garden.map(({ record, stage, label }) => <article key={record.id} role="listitem" title={label}><PlantIllustration kind={record.plantType} stage={stage} variant={record.variant}/><span>{label}</span></article>)}</div> : <div className="today-garden-empty" aria-hidden="true"><PlantIllustration kind="tree" stage={0} variant={0}/></div>}
         {execution.gardenTotal > 8 && <small className="today-garden-more">另有 {execution.gardenTotal - 8} 株植物</small>}
         {execution.active && <div className="today-active"><span className="today-active-dot"/><span><small>正在学习</small><strong>{execution.active.taskTitleSnapshot}</strong></span><b>{execution.active.mode === "pomodoro" ? `第 ${execution.active.pomodoroRound} 轮` : "正计时"}</b></div>}

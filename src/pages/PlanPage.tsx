@@ -34,7 +34,7 @@ export function PlanPage({ tasks, categories, taskActualMinutes = {}, onToggle, 
     <header className="page-header nature-page-header">
 <div>
 <p className="eyebrow">计划中心</p>
-<h1>把精力放在真正重要的地方</h1>
+<h1>学者有段竞业的心思，又要有段潇洒的趣味。</h1>
 <p>四象限帮助你看清优先级，而不是制造更多压力。</p>
 </div>
 <button className="button primary" onClick={onNew}>＋ 新建任务</button>
