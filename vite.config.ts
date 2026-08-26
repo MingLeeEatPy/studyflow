@@ -15,7 +15,7 @@ export default defineConfig({
         { src: 'icons/maskable-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
       ],
     },
-    workbox: { navigateFallback: 'index.html', globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'] },
+    workbox: { navigateFallback: 'index.html', globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,ogg,wav}'], maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
   })],
   server: {
     host: '127.0.0.1',

@@ -108,12 +108,11 @@ test("番茄钟到时后等待确认，再进入休息阶段", async ({ page }) 
   await expect(page.getByRole("button", { name: "开始下一轮" })).toBeVisible();
 });
 
-test("番茄专注到时会触发三声提示音", async ({ page }) => {
+test("番茄专注到时会播放所选提示音", async ({ page }) => {
   await page.addInitScript(() => {
-    const original = AudioContext.prototype.createOscillator;
-    AudioContext.prototype.createOscillator = function (...args) {
-      sessionStorage.setItem("studyflow-test-tone-count", String(Number(sessionStorage.getItem("studyflow-test-tone-count") ?? "0") + 1));
-      return original.apply(this, args);
+    HTMLMediaElement.prototype.play = function () {
+      sessionStorage.setItem("studyflow-last-audio", this.currentSrc || this.src);
+      return Promise.resolve();
     };
   });
   await openAtFixedTime(page);
@@ -123,7 +122,7 @@ test("番茄专注到时会触发三声提示音", async ({ page }) => {
   await page.getByLabel("本次专注时长").fill("1");
   await page.getByRole("button", { name: "进入 Focus" }).click();
   await page.clock.runFor(61_000);
-  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("studyflow-test-tone-count") ?? "0"))).toBe(3);
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("studyflow-last-audio"))).toContain("audio/wind-chime.ogg");
 });
 
 test("开始时可独立设置番茄参数，Focus 修改从下一阶段生效", async ({ page }) => {
@@ -239,15 +238,35 @@ test("设置修改会广播到同源的另一个标签页", async ({ page, conte
 
 test("用户可以调节并试听提示音音量", async ({ page }) => {
   await page.addInitScript(() => {
-    const original = AudioContext.prototype.createOscillator;
-    AudioContext.prototype.createOscillator = function (...args) {
-      sessionStorage.setItem("studyflow-preview-tone-count", String(Number(sessionStorage.getItem("studyflow-preview-tone-count") ?? "0") + 1));
-      return original.apply(this, args);
+    HTMLMediaElement.prototype.play = function () {
+      sessionStorage.setItem("studyflow-preview-audio", this.currentSrc || this.src);
+      return Promise.resolve();
     };
   });
   await openAtFixedTime(page);
   await page.getByRole("link", { name: "专注设置" }).click();
   await page.getByLabel("提示音音量").fill("100");
   await page.getByRole("button", { name: "试听提示音" }).click();
-  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("studyflow-preview-tone-count") ?? "0"))).toBe(3);
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("studyflow-preview-audio"))).toContain("audio/wind-chime.ogg");
+});
+
+test("自然环境音与随环境变化提示音会保存并可试听", async ({ page }) => {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = function () {
+      sessionStorage.setItem("studyflow-preview-ambient", this.currentSrc || this.src);
+      return Promise.resolve();
+    };
+  });
+  await openAtFixedTime(page);
+  await page.getByRole("link", { name: "专注设置" }).click();
+  await page.getByLabel("环境音").selectOption("forest");
+  await page.getByLabel("环境音音量").fill("55");
+  await page.getByLabel("结束提示音").selectOption("follow-ambience");
+  await page.getByRole("button", { name: "试听环境音" }).click();
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("studyflow-preview-ambient"))).toContain("audio/forest.ogg");
+  await page.getByRole("button", { name: "保存设置" }).click();
+  await page.reload();
+  await expect(page.getByLabel("环境音")).toHaveValue("forest");
+  await expect(page.getByLabel("环境音音量")).toHaveValue("55");
+  await expect(page.getByLabel("结束提示音")).toHaveValue("follow-ambience");
 });
