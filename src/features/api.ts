@@ -1,5 +1,25 @@
 import type { Category, CreateCategoryInput, CreateTaskInput, Task, UpdateTaskInput } from "../domain/models";
 import { backupRepository, categoryRepository, dailyReviewRepository, growthRepository, meditationRepository, planningRepository, sessionRepository, settingsRepository, taskRepository } from "../db";
+import { enqueueSyncChange } from "../domain/sync";
+
+async function queueEntity(entityType: "task" | "category", entity: { id: string; updatedAt: string; }): Promise<void> {
+  await enqueueSyncChange({ entityType, entityId: entity.id, operation: "upsert", payload: entity, updatedAt: entity.updatedAt });
+}
+
+const taskApi: StudyFlowApi["tasks"] = {
+  list: () => taskRepository.list(),
+  create: async (input) => { const entity = await taskRepository.create(input); await queueEntity("task", entity); return entity; },
+  update: async (id, input) => { const entity = await taskRepository.update(id, input); await queueEntity("task", entity); return entity; },
+  toggleComplete: async (id, completed) => { const entity = await taskRepository.toggleComplete(id, completed); await queueEntity("task", entity); return entity; },
+  archive: async (id) => { await taskRepository.archive(id); const entity = (await taskRepository.list({ includeArchived: true })).find((item) => item.id === id); if (entity) await queueEntity("task", entity); },
+};
+
+const categoryApi: StudyFlowApi["categories"] = {
+  list: () => categoryRepository.list(),
+  create: async (input) => { const entity = await categoryRepository.create(input); await queueEntity("category", entity); return entity; },
+  update: async (id, input) => { const entity = await categoryRepository.update(id, input); await queueEntity("category", entity); return entity; },
+  archive: async (id) => { await categoryRepository.archive(id); const entity = (await categoryRepository.list({ includeArchived: true })).find((item) => item.id === id); if (entity) await queueEntity("category", entity); },
+};
 
 export interface StudyFlowApi {
   tasks: {
@@ -28,8 +48,8 @@ export interface StudyFlowApi {
 }
 
 export const studyFlowApi: StudyFlowApi = {
-  tasks: taskRepository,
-  categories: categoryRepository,
+  tasks: taskApi,
+  categories: categoryApi,
   backup: backupRepository,
   sessions: sessionRepository,
   settings: settingsRepository,

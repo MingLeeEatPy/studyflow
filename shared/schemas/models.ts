@@ -323,6 +323,24 @@ export const finishSessionInputSchema = z.object({
   completeTask: z.boolean().default(false),
 }).refine((v) => v.outcome === "completed" || v.failureReason !== null, "部分完成或未完成必须选择原因");
 
+export const syncEntityTypeSchema = z.enum([
+  "category", "task", "planningPeriod", "studySession", "studyInterval", "sessionRevision",
+  "growthRecord", "meditationSession", "meditationInterval", "dailyReview", "executionSettings",
+]);
+export const syncOperationSchema = z.enum(["upsert", "delete"]);
+export const syncChangeSchema = z.object({
+  id: z.string().min(1),
+  entityType: syncEntityTypeSchema,
+  entityId: z.string().min(1),
+  operation: syncOperationSchema,
+  payload: z.unknown(),
+  updatedAt: isoDateTimeSchema,
+  createdAt: isoDateTimeSchema,
+  syncedAt: isoDateTimeSchema.nullable(),
+  attemptCount: z.number().int().nonnegative(),
+  lastError: z.string().nullable(),
+});
+
 export type Task = z.infer<typeof taskSchema>;
 export type PlanningPeriod = z.infer<typeof planningPeriodSchema>;
 export type PlanningPeriodType = z.infer<typeof planningPeriodTypeSchema>;
@@ -357,3 +375,6 @@ export type StartMeditationInput = z.input<typeof startMeditationInputSchema>;
 export type FinishMeditationInput = z.input<typeof finishMeditationInputSchema>;
 export type StartSessionInput = z.input<typeof startSessionInputSchema>;
 export type FinishSessionInput = z.input<typeof finishSessionInputSchema>;
+export type SyncEntityType = z.infer<typeof syncEntityTypeSchema>;
+export type SyncOperation = z.infer<typeof syncOperationSchema>;
+export type SyncChange = z.infer<typeof syncChangeSchema>;

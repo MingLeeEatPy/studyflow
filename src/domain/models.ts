@@ -31,4 +31,7 @@ export type {
   BreathingPattern,
   StartMeditationInput,
   FinishMeditationInput,
+  SyncChange,
+  SyncEntityType,
+  SyncOperation,
 } from "../../shared/schemas/models";

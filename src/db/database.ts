@@ -12,6 +12,7 @@ import type {
   TaskEvent,
   PlanningPeriod,
   DailyReview,
+  SyncChange,
 } from "../domain/models";
 
 export const DEFAULT_CATEGORY_NAMES = ["高数", "线性代数", "C", "CS50", "其他"] as const;
@@ -37,6 +38,7 @@ export class StudyFlowDatabase extends Dexie {
   meditationIntervals!: Table<MeditationInterval, string>;
   planningPeriods!: Table<PlanningPeriod, string>;
   dailyReviews!: Table<DailyReview, string>;
+  syncOutbox!: Table<SyncChange, string>;
 
   constructor(name = "StudyFlow") {
     super(name);
@@ -96,6 +98,20 @@ export class StudyFlowDatabase extends Dexie {
       meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
       planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
       dailyReviews: "id, &localDate, updatedAt",
+    });
+    this.version(6).stores({
+      tasks: "id, categoryId, planId, isCoreTask, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt", executionSettings: "id",
+      growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
+      meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
+      meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
+      planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
+      dailyReviews: "id, &localDate, updatedAt",
+      syncOutbox: "id, syncedAt, entityType, [entityType+entityId], updatedAt",
     });
 
     this.on("populate", () => {
