@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { MeditationIntention, MeditationSession } from "../../shared/schemas/models";
 import type { Category, Task } from "../domain/models";
+import type { GrowthRecord } from "../../shared/schemas/models";
 import { totalMeditationMs } from "../domain/meditation";
 import type { StudySession } from "../features/executionTypes";
 import { formatDuration } from "../features/executionAdapter";
 import { meditationAdapter } from "../features/meditationAdapter";
+import { GrowthGarden } from "../components/GrowthGarden";
+import { studyFlowApi } from "../features/api";
 
 const outcomes: Record<string, string> = { completed: "完成", partial: "部分完成", unfinished: "未完成" };
 const intentions: Record<MeditationIntention, string> = {
@@ -22,17 +25,19 @@ type HistoryRow =
   | { type: "study"; startedAt: string; timezone: string; session: StudySession }
   | { type: "meditation"; startedAt: string; timezone: string; session: MeditationSession };
 
-export function HistoryPage({ sessions, durations, meditationSessions, meditationDurations, tasks, categories, onRefresh, onCorrect }: {
+export function HistoryPage({ sessions, durations, meditationSessions, meditationDurations, growthRecords, tasks, categories, onRefresh, onCorrect }: {
   sessions: StudySession[];
   durations: Record<string, number>;
   meditationSessions?: MeditationSession[];
   meditationDurations?: Record<string, number>;
+  growthRecords?: GrowthRecord[];
   tasks: Task[];
   categories: Category[];
   onRefresh: () => void;
   onCorrect: (session: StudySession) => void;
 }) {
   const [type, setType] = useState<HistoryType>("all");
+  const [view, setView] = useState<"records" | "garden">("records");
   const [category, setCategory] = useState("all");
   const [taskId, setTaskId] = useState("all");
   const [outcome, setOutcome] = useState("all");
@@ -41,6 +46,7 @@ export function HistoryPage({ sessions, durations, meditationSessions, meditatio
   const [refreshToken, setRefreshToken] = useState(0);
   const [loadedMeditations, setLoadedMeditations] = useState<MeditationSession[]>(meditationSessions ?? []);
   const [loadedMeditationDurations, setLoadedMeditationDurations] = useState<Record<string, number>>(meditationDurations ?? {});
+  const [loadedGrowthRecords, setLoadedGrowthRecords] = useState<GrowthRecord[]>(growthRecords ?? []);
 
   useEffect(() => {
     if (meditationSessions !== undefined && meditationDurations !== undefined) {
@@ -59,6 +65,13 @@ export function HistoryPage({ sessions, durations, meditationSessions, meditatio
     })();
     return () => { cancelled = true; };
   }, [meditationSessions, meditationDurations, refreshToken]);
+
+  useEffect(() => {
+    if (growthRecords !== undefined) { setLoadedGrowthRecords(growthRecords); return; }
+    let cancelled = false;
+    void studyFlowApi.growth.list().then((records) => { if (!cancelled) setLoadedGrowthRecords(records); });
+    return () => { cancelled = true; };
+  }, [growthRecords, refreshToken]);
 
   const localDate = (iso: string, timezone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
   const displayDate = (iso: string, timezone: string) => new Intl.DateTimeFormat("zh-CN", { timeZone: timezone, month: "2-digit", day: "2-digit" }).format(new Date(iso));
@@ -104,6 +117,11 @@ export function HistoryPage({ sessions, durations, meditationSessions, meditatio
       </div>
       <button className="button secondary" onClick={refresh}>刷新记录</button>
     </header>
+    <div className="segmented history-view-switch" aria-label="历史视图">
+      <button className={view === "records" ? "active" : ""} onClick={() => setView("records")}>历史记录</button>
+      <button className={view === "garden" ? "active" : ""} onClick={() => setView("garden")}>Garden</button>
+    </div>
+    {view === "garden" ? <GrowthGarden records={loadedGrowthRecords} sessions={sessions} durations={durations} meditationSessions={loadedMeditations} meditationDurations={loadedMeditationDurations}/> : <>
     <div className="toolbar history-toolbar">
       <div className="filters">
         <select aria-label="记录类型" value={type} onChange={(event) => changeType(event.target.value as HistoryType)}>
@@ -125,7 +143,7 @@ export function HistoryPage({ sessions, durations, meditationSessions, meditatio
     <div className="history-list">
       {filtered.map((row) => row.type === "study" ? <StudyHistoryCard key={`study-${row.session.id}`} session={row.session} duration={durations[row.session.id] ?? 0} task={tasks.find((item) => item.id === row.session.taskId)} displayDate={displayDate} displayTime={displayTime} onCorrect={onCorrect}/> : <MeditationHistoryCard key={`meditation-${row.session.id}`} session={row.session} duration={loadedMeditationDurations[row.session.id] ?? 0} displayDate={displayDate} displayTime={displayTime}/>)}
       {filtered.length === 0 && <div className="empty-state"><span>◷</span><h3>还没有执行记录</h3><p>{type === "meditation" ? "完成第一次至少 1 分钟的冥想后，记录会出现在这里。" : "从一次学习或冥想开始，结束后会在这里留下记录。"}</p></div>}
-    </div>
+    </div></>}
   </>;
 }
 
