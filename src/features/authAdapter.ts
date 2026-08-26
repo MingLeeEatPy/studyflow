@@ -1,55 +1,126 @@
-import { getSupabaseConfig, supabaseHeaders } from "./supabaseClient";
+import type { AuthChangeEvent, AuthError, Session, User } from "@supabase/supabase-js";
+import { getSupabaseClient } from "./supabaseClient";
 
-export type AuthUser = { id: string; email: string | null };
-type AuthSession = { access_token: string; user: AuthUser };
-const SESSION_KEY = "studyflow.supabase.session";
+export type AuthUser = { id: string; email: string | null; phone?: string | null; provider?: string | null };
+export type AuthResult = { user: AuthUser | null; needsEmailConfirmation: boolean };
 
-function readSession(): AuthSession | null {
-  try {
-    const value = localStorage.getItem(SESSION_KEY);
-    return value ? JSON.parse(value) as AuthSession : null;
-  } catch { return null; }
+function mapUser(user: User | null): AuthUser | null {
+  if (!user) return null;
+  const provider = user.app_metadata?.provider ?? user.identities?.[0]?.provider ?? null;
+  return { id: user.id, email: user.email ?? null, phone: user.phone ?? null, provider };
 }
 
-function writeSession(session: AuthSession | null): void {
-  if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  else localStorage.removeItem(SESSION_KEY);
+function friendlyError(error: AuthError): Error {
+  const message = error.message.toLowerCase();
+  if (message.includes("invalid login credentials")) return new Error("邮箱或密码不正确");
+  if (message.includes("user already registered")) return new Error("该邮箱已经注册，请直接登录");
+  if (message.includes("password should be at least")) return new Error("密码至少需要 6 位");
+  if (message.includes("rate limit") || message.includes("too many")) return new Error("请求过于频繁，请稍后再试");
+  if (message.includes("redirect")) return new Error("登录回调地址未配置，请检查 Supabase 的 Site URL 和 Redirect URLs");
+  if (message.includes("sms")) return new Error("短信验证码发送失败，请检查短信服务商配置或稍后再试");
+  return new Error(error.message);
+}
+
+let cachedSession: Session | null = null;
+let sessionReady: Promise<void> | null = null;
+
+function clientOrThrow() {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("尚未配置云同步服务");
+  return client;
+}
+
+function ensureSessionCache() {
+  if (sessionReady) return sessionReady;
+  const client = getSupabaseClient();
+  sessionReady = client ? client.auth.getSession().then(({ data }) => { cachedSession = data.session; }) : Promise.resolve();
+  if (client) client.auth.onAuthStateChange((_event, session) => { cachedSession = session; });
+  return sessionReady;
 }
 
 export const authAdapter = {
-  isConfigured: () => getSupabaseConfig() !== null,
-  getUser: async (): Promise<AuthUser | null> => readSession()?.user ?? null,
-  getAccessToken: (): string | null => readSession()?.access_token ?? null,
-  getUserId: (): string | null => readSession()?.user.id ?? null,
+  isConfigured: () => getSupabaseClient() !== null,
+  getUser: async (): Promise<AuthUser | null> => { await ensureSessionCache(); return mapUser(cachedSession?.user ?? null); },
+  getSession: async (): Promise<Session | null> => { await ensureSessionCache(); return cachedSession; },
+  getAccessToken: (): string | null => cachedSession?.access_token ?? null,
+  getUserId: (): string | null => cachedSession?.user.id ?? null,
+  signUp: async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      const { data, error } = await clientOrThrow().auth.signUp({ email: email.trim(), password });
+      if (error) throw error;
+      cachedSession = data.session;
+      return { user: mapUser(data.user), needsEmailConfirmation: !data.session && Boolean(data.user) };
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
+  signIn: async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      const { data, error } = await clientOrThrow().auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw error;
+      cachedSession = data.session;
+      return { user: mapUser(data.user), needsEmailConfirmation: false };
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
   signInWithMagicLink: async (email: string): Promise<void> => {
-    const config = getSupabaseConfig();
-    if (!config) throw new Error("Supabase 尚未配置");
-    const response = await fetch(`${config.url}/auth/v1/otp`, {
-      method: "POST", headers: supabaseHeaders(config),
-      body: JSON.stringify({ email, create_user: true, gotrue_meta_security: {}, options: { emailRedirectTo: window.location.origin } }),
-    });
-    if (!response.ok) {
-      if (response.status === 429) throw new Error("登录邮件发送过于频繁。请等待一段时间后再试；内置邮件服务适合测试，正式多人内测请配置自定义 SMTP。");
-      throw new Error(`登录链接发送失败（${response.status}）`);
-    }
+    try {
+      const { error } = await clientOrThrow().auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: window.location.origin } });
+      if (error) throw error;
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
+  signInWithGoogle: async (): Promise<void> => {
+    try {
+      const { error } = await clientOrThrow().auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+      if (error) throw error;
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
+  sendPasswordReset: async (email: string): Promise<void> => {
+    try {
+      const { error } = await clientOrThrow().auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/#reset-password` });
+      if (error) throw error;
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
+  updatePassword: async (password: string): Promise<void> => {
+    try {
+      const { error } = await clientOrThrow().auth.updateUser({ password });
+      if (error) throw error;
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
+  sendPhoneOtp: async (phone: string): Promise<void> => {
+    try {
+      const { error } = await clientOrThrow().auth.updateUser({ phone: phone.trim() });
+      if (error) throw error;
+    } catch (error) { throw friendlyError(error as AuthError); }
+  },
+  verifyPhoneOtp: async (phone: string, token: string): Promise<AuthUser | null> => {
+    try {
+      const { data, error } = await clientOrThrow().auth.verifyOtp({ phone: phone.trim(), token: token.trim(), type: "phone_change" });
+      if (error) throw error;
+      cachedSession = data.session ?? cachedSession;
+      return mapUser(data.user ?? cachedSession?.user ?? null);
+    } catch (error) { throw friendlyError(error as AuthError); }
   },
   handleCallback: async (): Promise<AuthUser | null> => {
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const accessToken = hash.get("access_token");
-    if (!accessToken) return readSession()?.user ?? null;
-    const config = getSupabaseConfig();
-    if (!config) return null;
-    const response = await fetch(`${config.url}/auth/v1/user`, { headers: supabaseHeaders(config, accessToken) });
-    if (!response.ok) throw new Error("登录链接已失效，请重新获取");
-    const user = await response.json() as AuthUser;
-    writeSession({ access_token: accessToken, user });
-    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-    return user;
+    await ensureSessionCache();
+    const client = getSupabaseClient();
+    if (!client) return null;
+    const { data, error } = await client.auth.getSession();
+    if (error) throw friendlyError(error);
+    cachedSession = data.session;
+    return mapUser(data.session?.user ?? null);
+  },
+  onAuthStateChange: (listener: (user: AuthUser | null, event: AuthChangeEvent) => void): (() => void) => {
+    const client = getSupabaseClient();
+    if (!client) return () => undefined;
+    const { data } = client.auth.onAuthStateChange((event, session) => { cachedSession = session; listener(mapUser(session?.user ?? null), event); });
+    return () => data.subscription.unsubscribe();
   },
   signOut: async (): Promise<void> => {
-    const session = readSession();
-    const config = getSupabaseConfig();
-    if (session && config) await fetch(`${config.url}/auth/v1/logout`, { method: "POST", headers: supabaseHeaders(config, session.access_token) });
-    writeSession(null);
+    const client = getSupabaseClient();
+    if (client) {
+      const { error } = await client.auth.signOut();
+      if (error) throw friendlyError(error);
+    }
+    cachedSession = null;
   },
 };
+
+void ensureSessionCache();

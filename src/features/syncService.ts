@@ -11,6 +11,7 @@ import { authAdapter } from "./authAdapter";
 import { pullSyncChanges, pushSyncChanges, type RemoteSyncEntity } from "./syncTransport";
 
 const CURSOR_KEY = "studyflow.supabase.sync-cursor";
+const SNAPSHOT_KEY = "studyflow.supabase.sync-snapshot";
 const tableByEntity: Record<SyncEntityType, string> = {
   category: "categories", task: "tasks", planningPeriod: "planningPeriods", studySession: "studySessions",
   studyInterval: "studyIntervals", sessionRevision: "sessionRevisions", growthRecord: "growthRecords",
@@ -61,13 +62,21 @@ async function collectCurrentEntries(): Promise<Array<{ entityType: SyncEntityTy
   return backupEntityEntries({ data: { categories, tasks, planningPeriods, studySessions, studyIntervals, sessionRevisions, growthRecords, meditationSessions, meditationIntervals, dailyReviews, executionSettings: executionSettings! } } as Awaited<ReturnType<typeof backupRepository.exportData>>);
 }
 
-async function queueFullBackup(): Promise<number> {
+async function queueChangedBackup(): Promise<number> {
+  let snapshot: Record<string, string> = {};
+  try { snapshot = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) ?? "{}"); } catch { snapshot = {}; }
   const entries = await collectCurrentEntries();
+  const nextSnapshot: Record<string, string> = {};
   for (const { entityType, entity } of entries) {
+    const key = `${entityType}:${entity.id}`;
+    nextSnapshot[key] = entity.updatedAt;
+    if (snapshot[key] === entity.updatedAt) continue;
     await enqueueSyncChange({ entityType, entityId: entity.id, operation: "upsert", payload: entity, updatedAt: entity.updatedAt });
   }
-  return entries.length;
+  localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(nextSnapshot));
+  return entries.length - Object.keys(snapshot).filter((key) => nextSnapshot[key] === snapshot[key]).length;
 }
+
 
 export async function prepareFirstMerge(): Promise<{ backup: Blob; summary: MergeSummary }> {
   const backup = await backupRepository.exportData();
@@ -81,7 +90,7 @@ export async function confirmFirstMerge(strategy: "keep-local" | "merge"): Promi
     const remote = await pullSyncChanges("1970-01-01T00:00:00.000Z");
     for (const entity of remote.changes) await applyRemoteEntity(entity);
   }
-  await queueFullBackup();
+  await queueChangedBackup();
   return syncNow();
 }
 
@@ -113,7 +122,7 @@ async function applyRemoteEntity(remote: RemoteSyncEntity): Promise<boolean> {
 export async function syncNow(): Promise<SyncResult> {
   if (!authAdapter.isConfigured()) return { status: "not-configured", uploaded: 0, downloaded: 0 };
   if (!authAdapter.getAccessToken()) return { status: "signed-out", uploaded: 0, downloaded: 0 };
-  await queueFullBackup();
+  await queueChangedBackup();
   const pending = await pendingSyncChanges();
   try {
     await pushSyncChanges(pending);

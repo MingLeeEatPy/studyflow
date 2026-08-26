@@ -1,3 +1,5 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
@@ -16,4 +18,16 @@ export function supabaseHeaders(config: SupabaseConfig, accessToken?: string): H
     Authorization: `Bearer ${accessToken ?? config.anonKey}`,
     "Content-Type": "application/json",
   };
+}
+
+let client: SupabaseClient | null | undefined;
+
+export function getSupabaseClient(): SupabaseClient | null {
+  if (client !== undefined) return client;
+  const config = getSupabaseConfig();
+  if (!config) { client = null; return client; }
+  client = createClient(config.url, config.anonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
+  });
+  return client;
 }

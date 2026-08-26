@@ -1,22 +1,26 @@
 # StudyFlow 同步配置
 
-当前代码在没有云端配置时保持本地模式。要启用同步，需要先创建 Supabase 项目并执行 `supabase/migrations/001_sync_entities.sql`。
+没有云端配置时，StudyFlow 继续使用本地模式。启用同步前，在 Supabase 项目中执行 `supabase/migrations/001_sync_entities.sql`。
 
-在 Cloudflare Pages 的项目设置中添加：
+## Cloudflare 环境变量
 
 ```text
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<public-anon-key>
+VITE_SUPABASE_ANON_KEY=<publishable-or-anon-key>
 ```
 
-同时在 Supabase Auth 的 URL Configuration 中把生产 HTTPS 地址加入 Redirect URLs。不要把 service role key 放入前端或 Git。
+不要把 service-role key、数据库密码或 SMTP 密码放进前端或 Git。
 
-测试流程：
+## Supabase Auth
 
-1. 在电脑和手机使用同一 HTTPS 地址打开应用。
-2. 在“专注设置 → 跨设备同步”输入邮箱，点击发送登录链接。
-3. 在同一设备完成邮箱回跳后，先导出本地备份。
-4. 点击立即同步，再在另一设备登录同一邮箱。
-5. 断网创建任务，恢复网络后等待同步状态更新。
+在 Authentication → URL Configuration 中，将线上 HTTPS 地址加入 Site URL 和 Redirect URLs。启用 Email Provider；Google 和手机号按 `docs/AUTH_SETUP.md` 配置。
 
-如果没有 Supabase 配置，页面会明确显示“尚未配置云同步服务”，所有数据仍只保存在当前浏览器。
+## 用户流程
+
+1. 在电脑和手机使用同一个 HTTPS 地址打开 StudyFlow。
+2. 进入“专注设置 → 跨设备同步”，使用 Google 或邮箱密码注册/登录。
+3. 首次登录时选择“合并本地与云端”或“只保留本地”。
+4. 另一台设备登录同一账号后点击“立即同步”。
+5. 离线创建的任务会在恢复网络后上传；同步失败时可手动重试。
+
+未登录时，所有数据仍只保存在当前浏览器的 IndexedDB 中。
