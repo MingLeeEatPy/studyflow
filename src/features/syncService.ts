@@ -77,6 +77,18 @@ async function queueChangedBackup(): Promise<number> {
   return entries.length - Object.keys(snapshot).filter((key) => nextSnapshot[key] === snapshot[key]).length;
 }
 
+/** Force a complete local scan when an older build left local records outside the outbox. */
+export async function forceUploadLocal(): Promise<SyncResult> {
+  if (!authAdapter.isConfigured() || !authAdapter.getAccessToken()) return { status: "signed-out", uploaded: 0, downloaded: 0 };
+  try {
+    localStorage.removeItem(SNAPSHOT_KEY);
+    await queueChangedBackup();
+    return syncNow();
+  } catch (error) {
+    return { status: navigator.onLine === false ? "offline" : "error", uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "重新上传本地数据失败" };
+  }
+}
+
 
 export async function prepareFirstMerge(): Promise<{ backup: Blob; summary: MergeSummary }> {
   const backup = await backupRepository.exportData();
