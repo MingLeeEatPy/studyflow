@@ -86,12 +86,16 @@ export async function prepareFirstMerge(): Promise<{ backup: Blob; summary: Merg
 
 export async function confirmFirstMerge(strategy: "keep-local" | "merge"): Promise<SyncResult> {
   if (!authAdapter.isConfigured() || !authAdapter.getAccessToken()) return { status: "signed-out", uploaded: 0, downloaded: 0 };
-  if (strategy === "merge") {
-    const remote = await pullSyncChanges("1970-01-01T00:00:00.000Z");
-    for (const entity of remote.changes) await applyRemoteEntity(entity);
+  try {
+    if (strategy === "merge") {
+      const remote = await pullSyncChanges("1970-01-01T00:00:00.000Z");
+      for (const entity of remote.changes) await applyRemoteEntity(entity);
+    }
+    await queueChangedBackup();
+    return syncNow();
+  } catch (error) {
+    return { status: navigator.onLine === false ? "offline" : "error", uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "首次合并失败，请检查网络和 Supabase 配置" };
   }
-  await queueChangedBackup();
-  return syncNow();
 }
 
 function readCursor(): string {
@@ -122,9 +126,9 @@ async function applyRemoteEntity(remote: RemoteSyncEntity): Promise<boolean> {
 export async function syncNow(): Promise<SyncResult> {
   if (!authAdapter.isConfigured()) return { status: "not-configured", uploaded: 0, downloaded: 0 };
   if (!authAdapter.getAccessToken()) return { status: "signed-out", uploaded: 0, downloaded: 0 };
-  await queueChangedBackup();
-  const pending = await pendingSyncChanges();
   try {
+    await queueChangedBackup();
+    const pending = await pendingSyncChanges();
     await pushSyncChanges(pending);
     await markSyncChangesSynced(pending.map((change) => change.id));
     const pulled = await pullSyncChanges(readCursor());
