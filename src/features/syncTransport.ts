@@ -19,7 +19,9 @@ export async function pushSyncChanges(changes: SyncChange[]): Promise<void> {
       payload: change.payload, updated_at: change.updatedAt, created_at: change.createdAt,
       deleted_at: change.operation === "delete" ? change.updatedAt : null,
     }));
-    const { error } = await client.from("sync_entities").upsert(batch, { onConflict: "user_id,entity_type,entity_id" });
+    // Let PostgREST use the table's declared composite primary key. Supplying
+    // an onConflict index string is rejected by some hosted schema versions.
+    const { error } = await client.from("sync_entities").upsert(batch);
     if (error) throw new Error(`同步上传失败（${error.code ?? "unknown"}）：${error.message}`);
   }
 }
