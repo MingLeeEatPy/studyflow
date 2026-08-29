@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AMBIENT_SOUNDS, COMPLETION_SOUNDS, type AmbientSound } from "../features/focusAudio";
 import type { ExecutionSettings } from "../features/executionTypes";
 import { authAdapter, type AuthUser } from "../features/authAdapter";
-import { confirmFirstMerge, createLocalBackup, prepareFirstMerge, syncNow, type MergeSummary, type SyncStatus } from "../features/syncService";
+import { confirmFirstMerge, createLocalBackup, forceUploadLocal, prepareFirstMerge, type MergeSummary, type SyncStatus } from "../features/syncService";
 
 type Props = { settings: ExecutionSettings | null; onSave: (value: Partial<ExecutionSettings>) => Promise<void>; onPreviewCompletionSound: (value: Pick<ExecutionSettings, "completionSound" | "ambientSound" | "soundVolume">) => void; onPreviewAmbientSound: (sound: AmbientSound, volume: number) => void };
 
@@ -26,7 +26,7 @@ function SyncSettings() {
   const loadUser = useCallback(async () => { const next = await authAdapter.getUser(); setUser(next); setStatus(next ? "synced" : "signed-out"); if (next) { try { setMergeSummary((await prepareFirstMerge()).summary); } catch (error) { setMessage(error instanceof Error ? error.message : "无法读取云端数据"); } } }, []);
   useEffect(() => { let mounted = true; void authAdapter.handleCallback().then(() => { if (mounted) void loadUser(); }).catch((error) => mounted && setMessage(error instanceof Error ? error.message : "登录失败")); const unsubscribe = authAdapter.onAuthStateChange((next) => { if (!mounted) return; setUser(next); setStatus(next ? "synced" : "signed-out"); if (next) void prepareFirstMerge().then((result) => mounted && setMergeSummary(result.summary)).catch(() => undefined); }); return () => { mounted = false; unsubscribe(); }; }, [loadUser]);
   const submitAuth = useCallback(async () => { setLoading(true); setMessage(""); try { const result = mode === "signup" ? await authAdapter.signUp(email, password) : await authAdapter.signIn(email, password); setUser(result.user); if (result.needsEmailConfirmation) setMessage("注册成功，请先到邮箱完成确认，再登录"); else { setStatus("synced"); setMergeSummary((await prepareFirstMerge()).summary); } } catch (error) { setMessage(error instanceof Error ? error.message : "认证失败"); } finally { setLoading(false); } }, [email, mode, password]);
-  const sync = useCallback(async () => { setStatus("offline"); const result = await syncNow(); setStatus(result.status); setMessage(result.error ?? `已上传 ${result.uploaded} 条，下载 ${result.downloaded} 条`); }, []);
+  const sync = useCallback(async () => { setStatus("offline"); const result = await forceUploadLocal(); setStatus(result.status); setMessage(result.error ?? `已上传 ${result.uploaded} 条，下载 ${result.downloaded} 条`); }, []);
   const merge = useCallback(async (strategy: "keep-local" | "merge") => { setStatus("offline"); const result = await confirmFirstMerge(strategy); setStatus(result.status); setMergeSummary(null); setMessage(result.error ?? `合并完成：上传 ${result.uploaded} 条，下载 ${result.downloaded} 条`); }, []);
   const backup = useCallback(async () => { const blob = await createLocalBackup(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `studyflow-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url); }, []);
   if (!authAdapter.isConfigured()) return <section className="settings-panel sync-settings"><h2>跨设备同步</h2><p className="inline-warning">尚未配置云同步服务，当前继续使用本地模式。</p></section>;
