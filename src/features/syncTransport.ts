@@ -15,11 +15,14 @@ export async function pushSyncChanges(changes: SyncChange[]): Promise<void> {
   const { config, token, userId } = requireConfig();
   for (let index = 0; index < changes.length; index += 100) {
     const batch = changes.slice(index, index + 100);
-    const response = await fetch(`${config.url}/rest/v1/sync_entities?on_conflict=entity_type,entity_id`, {
+    const response = await fetch(`${config.url}/rest/v1/sync_entities?on_conflict=user_id,entity_type,entity_id`, {
       method: "POST", headers: { ...supabaseHeaders(config, token), Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify(batch.map((change) => ({ user_id: userId, entity_type: change.entityType, entity_id: change.entityId, payload: change.payload, updated_at: change.updatedAt, created_at: change.createdAt, deleted_at: change.operation === "delete" ? change.updatedAt : null }))),
     });
-    if (!response.ok) throw new Error(`同步上传失败（${response.status}）`);
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`同步上传失败（${response.status}）${detail ? `：${detail.slice(0, 240)}` : ""}`);
+    }
   }
 }
 
@@ -27,7 +30,10 @@ export async function pullSyncChanges(cursor: string): Promise<{ changes: Remote
   const { config, token, userId } = requireConfig();
   const query = new URLSearchParams({ select: "entity_type,entity_id,payload,updated_at,created_at,deleted_at", user_id: `eq.${userId}`, order: "updated_at.asc", updated_at: `gt.${cursor}`, limit: "500" });
   const response = await fetch(`${config.url}/rest/v1/sync_entities?${query.toString()}`, { headers: supabaseHeaders(config, token) });
-  if (!response.ok) throw new Error(`同步下载失败（${response.status}）`);
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`同步下载失败（${response.status}）${detail ? `：${detail.slice(0, 240)}` : ""}`);
+  }
   const changes = await response.json() as RemoteSyncEntity[];
   return { changes, cursor: changes.at(-1)?.updated_at ?? cursor };
 }
