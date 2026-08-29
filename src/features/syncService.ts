@@ -100,8 +100,17 @@ export async function confirmFirstMerge(strategy: "keep-local" | "merge"): Promi
   if (!authAdapter.isConfigured() || !authAdapter.getAccessToken()) return { status: "signed-out", uploaded: 0, downloaded: 0 };
   try {
     if (strategy === "merge") {
+      // Upload the device's local changes before applying remote rows. Otherwise
+      // every downloaded history row would be queued and uploaded again on iPad.
+      await queueChangedBackup();
+      const localPending = await pendingSyncChanges();
+      await pushSyncChanges(localPending);
+      await markSyncChangesSynced(localPending.map((change) => change.id));
       const remote = await pullSyncChanges("1970-01-01T00:00:00.000Z");
-      for (const entity of remote.changes) await applyRemoteEntity(entity);
+      let downloaded = 0;
+      for (const entity of remote.changes) if (await applyRemoteEntity(entity)) downloaded += 1;
+      writeCursor(remote.cursor);
+      return { status: "synced", uploaded: localPending.length, downloaded };
     }
     await queueChangedBackup();
     return syncNow();
