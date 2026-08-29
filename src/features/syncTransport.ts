@@ -19,8 +19,19 @@ export async function pushSyncChanges(changes: SyncChange[]): Promise<void> {
       payload: change.payload, updated_at: change.updatedAt, created_at: change.createdAt,
       deleted_at: change.operation === "delete" ? change.updatedAt : null,
     }));
-    const { error } = await client.from("sync_entities").upsert(batch, { onConflict: "user_id,entity_type,entity_id" });
-    if (error) throw new Error(`同步上传失败（${error.code ?? "unknown"}）：${error.message}`);
+    for (const row of batch) {
+      const filter = client.from("sync_entities").update(row).eq("user_id", userId).eq("entity_type", row.entity_type).eq("entity_id", row.entity_id);
+      const { data: updatedRows, error: updateError } = await filter.select("entity_id");
+      if (updateError) throw new Error(`同步上传失败（${updateError.code ?? "unknown"}）：${updateError.message}`);
+      if ((updatedRows?.length ?? 0) > 0) continue;
+      const { error: insertError } = await client.from("sync_entities").insert(row);
+      if (insertError) {
+        // A concurrent device may have inserted the row between update and
+        // insert. Retry that single row as an update.
+        const { error: retryError } = await client.from("sync_entities").update(row).eq("user_id", userId).eq("entity_type", row.entity_type).eq("entity_id", row.entity_id);
+        if (retryError) throw new Error(`同步上传失败（${retryError.code ?? insertError.code ?? "unknown"}）：${retryError.message}`);
+      }
+    }
   }
 }
 
