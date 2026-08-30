@@ -16,4 +16,9 @@ describe("Supabase 认证适配层", () => {
     expect(authAdapter.getAccessToken()).toBeNull();
     expect(authAdapter.getUserId()).toBeNull();
   });
+
+  it("不暴露手机号绑定或短信验证码接口", () => {
+    expect("sendPhoneOtp" in authAdapter).toBe(false);
+    expect("verifyPhoneOtp" in authAdapter).toBe(false);
+  });
 });

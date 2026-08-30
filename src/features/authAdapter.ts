@@ -1,13 +1,13 @@
 import type { AuthChangeEvent, AuthError, Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabaseClient";
 
-export type AuthUser = { id: string; email: string | null; phone?: string | null; provider?: string | null };
+export type AuthUser = { id: string; email: string | null; provider?: string | null };
 export type AuthResult = { user: AuthUser | null; needsEmailConfirmation: boolean };
 
 function mapUser(user: User | null): AuthUser | null {
   if (!user) return null;
   const provider = user.app_metadata?.provider ?? user.identities?.[0]?.provider ?? null;
-  return { id: user.id, email: user.email ?? null, phone: user.phone ?? null, provider };
+  return { id: user.id, email: user.email ?? null, provider };
 }
 
 function friendlyError(error: AuthError): Error {
@@ -17,7 +17,6 @@ function friendlyError(error: AuthError): Error {
   if (message.includes("password should be at least")) return new Error("密码至少需要 6 位");
   if (message.includes("rate limit") || message.includes("too many")) return new Error("请求过于频繁，请稍后再试");
   if (message.includes("redirect")) return new Error("登录回调地址未配置，请检查 Supabase 的 Site URL 和 Redirect URLs");
-  if (message.includes("sms")) return new Error("短信验证码发送失败，请检查短信服务商配置或稍后再试");
   return new Error(error.message);
 }
 
@@ -82,20 +81,6 @@ export const authAdapter = {
     try {
       const { error } = await clientOrThrow().auth.updateUser({ password });
       if (error) throw error;
-    } catch (error) { throw friendlyError(error as AuthError); }
-  },
-  sendPhoneOtp: async (phone: string): Promise<void> => {
-    try {
-      const { error } = await clientOrThrow().auth.updateUser({ phone: phone.trim() });
-      if (error) throw error;
-    } catch (error) { throw friendlyError(error as AuthError); }
-  },
-  verifyPhoneOtp: async (phone: string, token: string): Promise<AuthUser | null> => {
-    try {
-      const { data, error } = await clientOrThrow().auth.verifyOtp({ phone: phone.trim(), token: token.trim(), type: "phone_change" });
-      if (error) throw error;
-      cachedSession = data.session ?? cachedSession;
-      return mapUser(data.user ?? cachedSession?.user ?? null);
     } catch (error) { throw friendlyError(error as AuthError); }
   },
   handleCallback: async (): Promise<AuthUser | null> => {
