@@ -17,11 +17,13 @@ function friendlyError(error: AuthError): Error {
   if (message.includes("password should be at least")) return new Error("密码至少需要 6 位");
   if (message.includes("rate limit") || message.includes("too many")) return new Error("请求过于频繁，请稍后再试");
   if (message.includes("redirect")) return new Error("登录回调地址未配置，请检查 Supabase 的 Site URL 和 Redirect URLs");
+  if (message.includes("refresh token") || message.includes("jwt") || message.includes("session")) return new Error("登录已过期，请重新登录");
   return new Error(error.message);
 }
 
 let cachedSession: Session | null = null;
 let sessionReady: Promise<void> | null = null;
+let refreshInFlight: Promise<Session | null> | null = null;
 
 function clientOrThrow() {
   const client = getSupabaseClient();
@@ -37,10 +39,26 @@ function ensureSessionCache() {
   return sessionReady;
 }
 
+async function ensureValidSession(forceRefresh = false): Promise<Session | null> {
+  await ensureSessionCache();
+  if (!cachedSession) return null;
+  const expiresSoon = (cachedSession.expires_at ?? 0) * 1000 <= Date.now() + 60_000;
+  if (!forceRefresh && !expiresSoon) return cachedSession;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = clientOrThrow().auth.refreshSession().then(({ data, error }) => {
+    if (error) throw friendlyError(error);
+    cachedSession = data.session;
+    return cachedSession;
+  }).finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
 export const authAdapter = {
   isConfigured: () => getSupabaseClient() !== null,
-  getUser: async (): Promise<AuthUser | null> => { await ensureSessionCache(); return mapUser(cachedSession?.user ?? null); },
-  getSession: async (): Promise<Session | null> => { await ensureSessionCache(); return cachedSession; },
+  getUser: async (): Promise<AuthUser | null> => mapUser((await ensureValidSession())?.user ?? null),
+  getSession: async (): Promise<Session | null> => ensureValidSession(),
+  ensureValidSession,
+  refreshSession: (): Promise<Session | null> => ensureValidSession(true),
   getAccessToken: (): string | null => cachedSession?.access_token ?? null,
   getUserId: (): string | null => cachedSession?.user.id ?? null,
   signUp: async (email: string, password: string): Promise<AuthResult> => {

@@ -16,6 +16,16 @@ export type MergeSummary = { localCount: number; remoteCount: number; remoteEnti
 export type InitialSyncDecision = "download-cloud" | "upload-local" | "ask-merge" | "incremental";
 export type SyncInitialization = { result: SyncResult; mergeSummary: MergeSummary | null };
 
+export function syncErrorStatus(error: unknown): "signed-out" | "offline" | "error" {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  if (message.includes("401") || message.includes("pgrst301") || message.includes("jwt")
+    || message.includes("登录已过期") || message.includes("unauthorized")) return "signed-out";
+  if (error instanceof TypeError || message.includes("failed to fetch") || message.includes("network request failed")
+    || message.includes("load failed") || message.includes("networkerror")) return "offline";
+  if (navigator.onLine === false && !message.includes("同步下载失败（") && !message.includes("同步上传失败（")) return "offline";
+  return "error";
+}
+
 export function scopedSyncStorageKey(kind: "cursor" | "snapshot" | "initialized", userId: string): string {
   return `${STORAGE_PREFIX}.${kind}.${userId}`;
 }
@@ -160,7 +170,7 @@ export async function forceUploadLocal(): Promise<SyncResult> {
     await queueChangedBackup();
     return syncNow();
   } catch (error) {
-    return { status: navigator.onLine === false ? "offline" : "error", uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "重新上传本地数据失败" };
+    return { status: syncErrorStatus(error), uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "重新上传本地数据失败" };
   }
 }
 
@@ -188,7 +198,7 @@ export async function confirmFirstMerge(strategy: "keep-local" | "merge"): Promi
     if (result.status === "synced") localStorage.setItem(storageKey("initialized"), "1");
     return result;
   } catch (error) {
-    return { status: navigator.onLine === false ? "offline" : "error", uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "首次合并失败，请检查网络和 Supabase 配置" };
+    return { status: syncErrorStatus(error), uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "首次合并失败，请检查网络和 Supabase 配置" };
   }
 }
 
@@ -252,7 +262,7 @@ async function initializeCloudSyncInternal(): Promise<SyncInitialization> {
   } catch (error) {
     return {
       result: {
-        status: navigator.onLine === false ? "offline" : "error",
+        status: syncErrorStatus(error),
         uploaded: 0,
         downloaded: 0,
         error: error instanceof Error ? error.message : "自动云同步初始化失败",
@@ -287,7 +297,7 @@ async function performSync(): Promise<SyncResult> {
     writeCursor(pulled.cursor);
     return { status: "synced", uploaded: pending.length, downloaded };
   } catch (error) {
-    return { status: navigator.onLine === false ? "offline" : "error", uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "同步失败" };
+    return { status: syncErrorStatus(error), uploaded: 0, downloaded: 0, error: error instanceof Error ? error.message : "同步失败" };
   }
 }
 

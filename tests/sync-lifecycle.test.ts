@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideInitialSync, hasMeaningfulLocalData, scopedSyncStorageKey } from "../src/features/syncService";
+import { decideInitialSync, hasMeaningfulLocalData, scopedSyncStorageKey, syncErrorStatus } from "../src/features/syncService";
 
 const stamp = "2026-08-30T08:00:00.000Z";
 
@@ -33,5 +33,11 @@ describe("自动云同步生命周期", () => {
     expect(decideInitialSync(false, true, false)).toBe("upload-local");
     expect(decideInitialSync(false, true, true)).toBe("ask-merge");
     expect(decideInitialSync(true, true, true)).toBe("incremental");
+  });
+
+  it("401 属于登录过期，只有网络异常才显示离线", () => {
+    expect(syncErrorStatus(new Error("同步下载失败（401）：JWT expired"))).toBe("signed-out");
+    expect(syncErrorStatus(new TypeError("Failed to fetch"))).toBe("offline");
+    expect(syncErrorStatus(new Error("数据库约束错误"))).toBe("error");
   });
 });
