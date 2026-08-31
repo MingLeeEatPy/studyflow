@@ -615,6 +615,44 @@ textarea:focus-visible {
   backdrop-filter: blur(15px);
 }
 
+.compact-timer {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  z-index: 80;
+  width: 232px;
+  min-height: 88px;
+  padding: 11px 12px 10px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 8px;
+  color: #edf4ef;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 18px;
+  background: rgba(16, 43, 34, .91);
+  box-shadow: 0 18px 44px rgba(11, 31, 24, .28);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  touch-action: none;
+  user-select: none;
+}
+
+.compact-timer-left { left: max(16px, env(safe-area-inset-left)); }
+.compact-timer-right { right: max(16px, env(safe-area-inset-right)); }
+.compact-drag-handle { grid-row: 1 / span 2; align-self: stretch; color: rgba(238, 245, 240, .65); cursor: grab; }
+.compact-drag-handle svg { width: 17px; }
+.compact-timer-copy { min-width: 0; display: grid; gap: 2px; }
+.compact-timer-copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.compact-timer-copy small { color: rgba(235, 243, 238, .67); font-size: 9px; }
+.compact-timer time { font-size: 18px; font-variant-numeric: tabular-nums; }
+.compact-timer-actions { grid-column: 2 / 4; display: flex; justify-content: flex-end; gap: 5px; }
+.compact-timer-actions button { width: 31px; height: 29px; display: grid; place-items: center; color: #edf4ef; border: 1px solid rgba(255, 255, 255, .1); border-radius: 9px; background: rgba(255, 255, 255, .07); }
+.compact-timer-actions svg { width: 14px; }
+
+@media (max-width: 280px) {
+  .compact-timer { left: 12px; right: 12px; width: calc(100vw - 24px); }
+}
+
 /* Focus */
 .focus-page {
   position: relative;
@@ -692,6 +730,20 @@ textarea:focus-visible {
 .focus-back svg {
   width: 17px;
 }
+
+.focus-compact-button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: rgba(245, 248, 245, .88);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 13px;
+  background: rgba(12, 29, 23, .34);
+}
+
+.focus-compact-button svg { width: 17px; }
+.focus-header-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 
 .focus-center {
   position: relative;
@@ -1054,7 +1106,7 @@ textarea:focus-visible {
   .task-card .task-actions button { padding: 5px 7px; }
 
   .focus-page { padding: 18px; }
-  .focus-page > header > span:nth-child(2), .focus-page > header > span:last-child { display: none; }
+  .focus-page > header > span:nth-child(2), .focus-header-actions > span { display: none; }
   .focus-back span { display: none; }
   .focus-back { width: 42px; height: 42px; padding: 0; justify-content: center; }
   .focus-center { padding: 42px 0 58px; }
@@ -1090,7 +1142,7 @@ textarea:focus-visible {
 .meditation-start-card>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.meditation-start-card>header span{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:650}.meditation-start-card>header svg{width:19px;color:#6f9280}.meditation-start-card>header small{color:#5d6c63;font-size:10px}.meditation-mode{padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:9px;border:0}.meditation-mode legend{margin-bottom:7px;color:#5d6c63;font-size:11px}.meditation-mode label{padding:11px;display:flex;gap:8px;border:1px solid rgba(73,110,91,.12);border-radius:13px;background:rgba(255,255,255,.64)}.meditation-mode label.selected{border-color:rgba(82,125,103,.42);background:rgba(223,237,227,.78)}
 .meditation-presets{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.meditation-presets button{padding:8px 11px;border:1px solid rgba(73,110,91,.12);border-radius:999px;color:#4f6258;background:rgba(255,255,255,.7)}.meditation-presets button.active{color:white;background:#6f9280}.meditation-presets label{margin-left:auto;display:flex;align-items:center;gap:6px;color:#5d6c63;font-size:10px}.meditation-presets input{width:60px;padding:7px;border:1px solid rgba(73,110,91,.16);border-radius:9px}.meditation-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.meditation-start-button{display:flex;align-items:center;justify-content:center;gap:8px}.meditation-start-button svg{width:16px}
 .meditation-recent{margin-top:24px;padding:22px;border:1px solid rgba(83,114,98,.1);border-radius:20px;background:rgba(255,255,255,.74)}.meditation-recent>header{display:flex;align-items:center;justify-content:space-between}.meditation-recent h2{margin:0;font-family:Georgia,"Noto Serif SC",serif;font-size:19px;font-weight:500}.meditation-recent p{margin:3px 0;color:#5d6c63;font-size:11px}.meditation-recent>div{margin-top:14px;display:grid;gap:7px}.meditation-recent article{padding:10px 12px;display:grid;grid-template-columns:75px 1fr auto auto;align-items:center;gap:12px;border-radius:12px;background:#f7f8f5}.meditation-recent article span,.meditation-recent article small{color:#5d6c63;font-size:10px}.meditation-empty{padding:25px 0;text-align:center}
-.meditation-focus-page{min-height:100vh;position:relative;overflow:hidden;padding:25px clamp(22px,5vw,70px);display:grid;grid-template-rows:auto 1fr auto;color:#eef3ef;background:#10241e url("../assets/nature/meditation-water.webp") center/cover no-repeat}.meditation-focus-page::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,27,22,.48),rgba(10,28,23,.24) 40%,rgba(6,21,17,.72))}.meditation-mist{position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 50% 45%,rgba(211,226,216,.18),transparent 38%);pointer-events:none}.meditation-focus-page>header,.meditation-focus-page>footer,.meditation-focus-center{position:relative;z-index:2}.meditation-focus-page>header,.meditation-focus-page>footer{display:flex;justify-content:space-between;align-items:center;color:rgba(239,244,240,.76);font-size:11px}.meditation-focus-page>header button{width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);border-radius:13px;color:white;background:rgba(12,31,25,.42);-webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px)}
+.meditation-focus-page{min-height:100vh;position:relative;overflow:hidden;padding:25px clamp(22px,5vw,70px);display:grid;grid-template-rows:auto 1fr auto;color:#eef3ef;background:#10241e url("../assets/nature/meditation-water.webp") center/cover no-repeat}.meditation-focus-page::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,27,22,.48),rgba(10,28,23,.24) 40%,rgba(6,21,17,.72))}.meditation-mist{position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 50% 45%,rgba(211,226,216,.18),transparent 38%);pointer-events:none}.meditation-focus-page>header,.meditation-focus-page>footer,.meditation-focus-center{position:relative;z-index:2}.meditation-focus-page>header,.meditation-focus-page>footer{display:flex;justify-content:space-between;align-items:center;color:rgba(239,244,240,.76);font-size:11px}.meditation-header-actions{display:flex;align-items:center;gap:12px}.meditation-focus-page>header button{width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);border-radius:13px;color:white;background:rgba(12,31,25,.42);-webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px)}
 .meditation-focus-center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}.meditation-flower{width:min(290px,68vw);height:min(315px,38vh);filter:drop-shadow(0 22px 28px rgba(0,0,0,.25))}.breathing-orb{width:min(250px,65vw);aspect-ratio:1;display:grid;place-content:center;justify-items:center;border:1px solid rgba(255,255,255,.32);border-radius:50%;background:radial-gradient(circle,rgba(229,238,232,.2),rgba(122,156,139,.08) 55%,transparent 72%);box-shadow:0 0 80px rgba(184,208,194,.2);animation:breathing-pulse 8s ease-in-out infinite}.breathing-orb span{font-family:Georgia,"Noto Serif SC",serif;font-size:27px}.breathing-orb strong{margin:7px;font-size:48px;font-weight:300}.breathing-orb small{color:rgba(239,244,240,.74)}
 .meditation-controls-glass{width:min(500px,calc(100vw - 38px));padding:20px 26px;display:grid;justify-items:center;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:rgba(10,28,22,.5);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px)}.meditation-controls-glass>span{color:rgba(239,244,240,.78);font-size:11px;letter-spacing:.06em}.meditation-controls-glass time{margin:5px 0 14px;font-size:clamp(48px,7vw,64px);font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:.04em}.meditation-focus-actions{display:flex;gap:9px}.meditation-light,.meditation-quiet{display:flex;align-items:center;justify-content:center;gap:7px;min-width:130px;border-radius:14px}.meditation-light{color:#203b30;background:rgba(247,249,246,.94)}.meditation-quiet{color:rgba(242,247,243,.82);border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04)}.meditation-light svg,.meditation-quiet svg{width:15px}.meditation-end-link{margin-top:11px;border:0;color:rgba(241,246,242,.68);background:transparent;font-size:10px}
 .meditation-review{display:grid;gap:16px}.meditation-review fieldset{margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;border:0}.meditation-review legend{margin-bottom:8px;color:#5d6c63;font-size:11px}.meditation-review fieldset label{padding:8px 4px;display:grid;justify-items:center;border:1px solid var(--border);border-radius:11px}.meditation-review fieldset label.selected{border-color:#6f9280;background:#eef5f1}.meditation-review fieldset input{position:absolute;opacity:0}.meditation-review fieldset span{color:#5d6c63;font-size:9px}.meditation-review textarea{min-height:84px;padding:10px;resize:vertical;border:1px solid var(--border);border-radius:10px}.active-meditation-bar .session-summary>svg{width:22px;color:#7e9f8d}

@@ -5,17 +5,20 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [react(), VitePWA({
     registerType: 'prompt',
+    strategies: 'injectManifest',
+    srcDir: 'src',
+    filename: 'sw.ts',
     includeAssets: ['icons/icon.svg', 'icons/maskable-icon.svg'],
     manifest: {
       name: 'StudyFlow · 学习计划与专注', short_name: 'StudyFlow', lang: 'zh-CN',
-      description: '本地优先的个人学习计划、专注与复盘工具。', start_url: './', scope: './', display: 'standalone',
+      id: './', description: '本地优先的个人学习计划、专注与复盘工具。', start_url: './', scope: './', display: 'standalone',
       background_color: '#f4f7ef', theme_color: '#355d3e',
       icons: [
         { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         { src: 'icons/maskable-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
       ],
     },
-    workbox: { navigateFallback: 'index.html', globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,ogg,wav}'], maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
+    injectManifest: { globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,ogg,wav}'], maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
   })],
   server: {
     host: '127.0.0.1',

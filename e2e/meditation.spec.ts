@@ -67,6 +67,19 @@ test("定时冥想到时后继续正计时并显示超时成长状态", async ({
   await expect(page.getByRole("button", { name: "结束冥想" })).toBeVisible();
 });
 
+test("冥想与学习共用微缩计时器", async ({ page }) => {
+  await openAtFixedTime(page);
+  await startOneMinuteMeditation(page);
+  await page.getByRole("button", { name: "缩小计时器" }).click();
+  const widget = page.getByRole("complementary", { name: "微缩冥想计时器" });
+  await expect(widget).toBeVisible();
+  await widget.getByRole("button", { name: "暂停计时" }).click();
+  await expect(widget).toContainText("已暂停");
+  await widget.getByRole("button", { name: "继续计时" }).click();
+  await widget.getByRole("button", { name: "展开计时器" }).click();
+  await expect(page.getByText("正在冥想", { exact: true })).toBeVisible();
+});
+
 test("活动冥想在刷新后恢复，并在同源标签页间同步暂停、继续与结束", async ({ page, context }) => {
   await openAtFixedTime(page);
   const other = await context.newPage();

@@ -1,10 +1,10 @@
-import { ArrowLeft, Coffee, Pause, Play, Settings2, Square } from "lucide-react";
+import { ArrowLeft, Coffee, Minimize2, Pause, Play, Settings2, Square } from "lucide-react";
 import type { ExecutionSettings, StudyInterval, StudySession } from "../features/executionTypes";
 import { formatDuration } from "../features/executionAdapter";
 import { PlantIllustration } from "../components/PlantIllustration";
 import type { GrowthStage } from "../domain/growth";
 
-export function FocusPage({ session, activeInterval, settings, seconds, growthStage, growthVariant, overtime = false, estimateReached, onLeave, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; growthStage: GrowthStage; growthVariant: number; overtime?: boolean; estimateReached?: boolean; onLeave: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
+export function FocusPage({ session, activeInterval, settings, seconds, growthStage, growthVariant, overtime = false, estimateReached, onLeave, onCompact, onPause, onResume, onAdvance, onEditPomodoro, onFinish }: { session: StudySession; activeInterval?: StudyInterval; settings: ExecutionSettings | null; seconds: number; growthStage: GrowthStage; growthVariant: number; overtime?: boolean; estimateReached?: boolean; onLeave: () => void; onCompact: () => void; onPause: () => void; onResume: () => void; onAdvance: (action: "start-break" | "skip-break" | "start-focus") => void; onEditPomodoro: () => void; onFinish: () => void }) {
   const paused = session.status === "paused"; const awaiting = session.status === "awaiting-confirmation";
   const isBreak = activeInterval?.kind === "break";
   const singlePomodoro = session.mode === "pomodoro" && session.pomodoroPattern === "single";
@@ -18,7 +18,7 @@ export function FocusPage({ session, activeInterval, settings, seconds, growthSt
 <button className="focus-back" aria-label="返回 StudyFlow" onClick={onLeave}>
 <ArrowLeft /><span>返回 StudyFlow</span></button>
 <span>StudyFlow · Focus</span>
-<span>{session.mode === "pomodoro" ? singlePomodoro ? "POMODORO · SINGLE" : `POMODORO · ROUND ${session.pomodoroRound}` : "STOPWATCH"}</span>
+<div className="focus-header-actions"><span>{session.mode === "pomodoro" ? singlePomodoro ? "POMODORO · SINGLE" : `POMODORO · ROUND ${session.pomodoroRound}` : "STOPWATCH"}</span><button className="focus-compact-button" aria-label="缩小计时器" onClick={onCompact}><Minimize2 /></button></div>
 </header>
 <section className="focus-center">
 <div className="focus-ambient" aria-hidden="true" />

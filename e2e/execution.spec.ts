@@ -59,6 +59,29 @@ test("不足一分钟的临时学习会话自动丢弃", async ({ page }) => {
   await expect(page.getByText("误触计时")).toHaveCount(0);
 });
 
+test("学习计时器可以缩小、控制并恢复位置", async ({ page }) => {
+  await openAtFixedTime(page);
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("学习名称").fill("微缩计时测试");
+  await page.getByRole("button", { name: "进入 Focus" }).click();
+  await page.getByRole("button", { name: "缩小计时器" }).click();
+  const widget = page.getByRole("complementary", { name: "微缩学习计时器" });
+  await expect(widget).toBeVisible();
+  await widget.getByRole("button", { name: "暂停计时" }).click();
+  await expect(widget).toContainText("已暂停");
+  await widget.getByRole("button", { name: "继续计时" }).click();
+  await widget.getByRole("button", { name: /移动微缩计时器/ }).press("ArrowLeft");
+  await expect(widget).toHaveClass(/compact-timer-left/);
+  await page.setViewportSize({ width: 260, height: 800 });
+  const bounds = await widget.boundingBox();
+  expect(bounds?.x).toBeGreaterThanOrEqual(0);
+  expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(260);
+  await page.reload();
+  await expect(page.getByRole("complementary", { name: "微缩学习计时器" })).toHaveClass(/compact-timer-left/);
+  await page.getByRole("button", { name: "展开计时器" }).click();
+  await expect(page.getByRole("heading", { name: "微缩计时测试" })).toBeVisible();
+});
+
 test("Focus 按真实投入成长，结束后植物进入今日花园", async ({ page }) => {
   await openAtFixedTime(page);
   await page.getByRole("link", { name: "Plan" }).click();
@@ -259,14 +282,16 @@ test("自然环境音与随环境变化提示音会保存并可试听", async ({
   });
   await openAtFixedTime(page);
   await page.getByRole("link", { name: "专注设置" }).click();
-  await page.getByLabel("环境音").selectOption("forest");
+  await page.getByRole("combobox", { name: "环境声", exact: true }).selectOption("forest");
   await page.getByLabel("环境音音量").fill("55");
   await page.getByLabel("结束提示音").selectOption("follow-ambience");
-  await page.getByRole("button", { name: "试听环境音" }).click();
+  await page.getByRole("button", { name: "试听环境声" }).click();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("studyflow-preview-ambient"))).toContain("audio/forest.ogg");
   await page.getByRole("button", { name: "保存设置" }).click();
+  await expect(page.getByText("设置已保存")).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("环境音")).toHaveValue("forest");
+  await page.getByRole("link", { name: "专注设置" }).click();
+  await expect(page.getByRole("combobox", { name: "环境声", exact: true })).toHaveValue("forest");
   await expect(page.getByLabel("环境音音量")).toHaveValue("55");
   await expect(page.getByLabel("结束提示音")).toHaveValue("follow-ambience");
 });
