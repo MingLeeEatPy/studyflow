@@ -115,13 +115,15 @@ export function DesktopTimerApp() {
   };
 
   const requestFinish = async () => {
-    new BroadcastChannel("studyflow-execution").postMessage({ type: "desktop-request-finish", kind: state?.kind });
+    if (!state) return;
+    await desktopBridge.sendTimerAction("finish", state.kind);
     await desktopBridge.showMain();
     await desktopBridge.hideTimer();
   };
 
   const expand = async () => {
-    new BroadcastChannel("studyflow-execution").postMessage({ type: "desktop-open-focus", kind: state?.kind });
+    if (!state) return;
+    await desktopBridge.sendTimerAction("expand", state.kind);
     await desktopBridge.showMain();
     await desktopBridge.hideTimer();
   };
