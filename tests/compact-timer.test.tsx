@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CompactTimerWidget } from "../src/components/CompactTimerWidget";
 import { COMPACT_TIMER_PREFERENCE_KEY, loadCompactTimerPreference, saveCompactTimerPreference } from "../src/features/compactTimerPreference";
@@ -16,8 +16,8 @@ describe("CompactTimerWidget", () => {
 
   it("supports keyboard side selection", () => {
     const change = vi.fn();
-    const view = render(<CompactTimerWidget kind="meditation" title="Meditation" statusText="正在冥想" seconds={30} paused={false} side="right" onSideChange={change} onExpand={vi.fn()} onPause={vi.fn()} onResume={vi.fn()} onFinish={vi.fn()}/>);
-    fireEvent.keyDown(within(view.container).getByRole("button", { name: /移动微缩计时器/ }), { key: "ArrowLeft" });
+    render(<CompactTimerWidget kind="meditation" title="Meditation" statusText="正在冥想" seconds={30} paused={false} side="right" onSideChange={change} onExpand={vi.fn()} onPause={vi.fn()} onResume={vi.fn()} onFinish={vi.fn()}/>);
+    fireEvent.keyDown(screen.getAllByRole("button", { name: /移动微缩计时器/ }).at(-1)!, { key: "ArrowLeft" });
     expect(change).toHaveBeenCalledWith("left");
   });
 

@@ -618,7 +618,7 @@ textarea:focus-visible {
 .compact-timer {
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
-  z-index: 80;
+  z-index: 2147483000;
   width: 232px;
   min-height: 88px;
   padding: 11px 12px 10px;
@@ -635,11 +635,12 @@ textarea:focus-visible {
   backdrop-filter: blur(20px);
   touch-action: none;
   user-select: none;
+  isolation: isolate;
 }
 
 .compact-timer-left { left: max(16px, env(safe-area-inset-left)); }
 .compact-timer-right { right: max(16px, env(safe-area-inset-right)); }
-.compact-drag-handle { grid-row: 1 / span 2; align-self: stretch; color: rgba(238, 245, 240, .65); cursor: grab; }
+.compact-drag-handle { grid-row: 1 / span 2; align-self: stretch; color: rgba(238, 245, 240, .65); cursor: grab; touch-action: none; }
 .compact-drag-handle svg { width: 17px; }
 .compact-timer-copy { min-width: 0; display: grid; gap: 2px; }
 .compact-timer-copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

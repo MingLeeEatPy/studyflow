@@ -1,5 +1,6 @@
 import { Grip, Maximize2, Pause, Play, Square } from "lucide-react";
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { formatDuration } from "../features/executionAdapter";
 
 type CompactTimerWidgetProps = {
@@ -19,7 +20,6 @@ type CompactTimerWidgetProps = {
 export function CompactTimerWidget({ kind, title, statusText, seconds, paused, side, onSideChange, onExpand, onPause, onResume, onFinish }: CompactTimerWidgetProps) {
   const dragStart = useRef<{ x: number; pointerId: number } | null>(null);
   const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    if ((event.target as HTMLElement).closest("button")) return;
     dragStart.current = { x: event.clientX, pointerId: event.pointerId };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -36,8 +36,8 @@ export function CompactTimerWidget({ kind, title, statusText, seconds, paused, s
     }
   };
 
-  return <aside className={`compact-timer compact-timer-${side}`} aria-label={kind === "study" ? "微缩学习计时器" : "微缩冥想计时器"} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
-    <button className="compact-drag-handle" aria-label="移动微缩计时器，使用左右方向键选择位置" onKeyDown={moveWithKeyboard} onClick={() => onSideChange(side === "left" ? "right" : "left")}><Grip /></button>
+  const widget = <aside className={`compact-timer compact-timer-${side}`} aria-label={kind === "study" ? "微缩学习计时器" : "微缩冥想计时器"}>
+    <button className="compact-drag-handle" aria-label="移动微缩计时器，使用左右方向键选择位置" onPointerDown={onPointerDown} onPointerUp={onPointerUp} onKeyDown={moveWithKeyboard} onClick={() => onSideChange(side === "left" ? "right" : "left")}><Grip /></button>
     <div className="compact-timer-copy"><strong title={title}>{title}</strong><small>{statusText}</small></div>
     <time>{formatDuration(seconds)}</time>
     <div className="compact-timer-actions">
@@ -46,4 +46,8 @@ export function CompactTimerWidget({ kind, title, statusText, seconds, paused, s
       <button aria-label={kind === "study" ? "结束学习" : "结束冥想"} onClick={onFinish}><Square /></button>
     </div>
   </aside>;
+
+  // Rendering at document.body prevents iPad split-view containers from creating
+  // a stacking context that can cover a fixed-position timer.
+  return createPortal(widget, document.body);
 }
