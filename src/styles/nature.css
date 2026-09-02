@@ -810,11 +810,24 @@ textarea:focus-visible {
 }
 
 .focus-orbit {
-  width: auto;
-  aspect-ratio: auto;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
+  width: min(214px, 42vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  margin: 10px auto 12px;
+  border: 1px solid rgba(205, 232, 216, .5);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(203, 226, 212, .13), rgba(101, 145, 120, .05) 58%, transparent 70%);
+  box-shadow: inset 0 0 28px rgba(208, 234, 218, .08), 0 0 42px rgba(10, 29, 21, .2);
+}
+
+.focus-orbit > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  text-align: center;
 }
 
 .focus-orbit > div > span {
@@ -835,7 +848,13 @@ textarea:focus-visible {
 }
 
 .focus-orbit.overtime {
-  box-shadow: none;
+  border-color: rgba(229, 202, 150, .82);
+  box-shadow: inset 0 0 28px rgba(229, 202, 150, .12), 0 0 42px rgba(90, 61, 25, .25);
+}
+
+.focus-orbit.paused {
+  border-color: rgba(222, 183, 109, .76);
+  background: radial-gradient(circle, rgba(221, 181, 108, .13), rgba(111, 78, 29, .06) 58%, transparent 70%);
 }
 
 .focus-orbit.overtime time {
