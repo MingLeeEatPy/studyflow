@@ -6,7 +6,11 @@ import { registerPwa } from "./pwa";
 const root = createRoot(document.getElementById("root")!);
 const isDesignPreview = new URLSearchParams(window.location.search).get("design-preview") === "1";
 
-if (isDesignPreview) {
+if (window.location.hash === "#desktop-timer") {
+  void Promise.all([import("./desktop/DesktopTimerApp"), import("./desktop/desktopTimer.css")]).then(([{ DesktopTimerApp }]) => {
+    root.render(<StrictMode><DesktopTimerApp /></StrictMode>);
+  });
+} else if (isDesignPreview) {
   void import("./design-preview/DesignPreviewApp").then(({ DesignPreviewApp }) => {
     root.render(<StrictMode><DesignPreviewApp /></StrictMode>);
   });

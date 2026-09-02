@@ -3,6 +3,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+src-tauri/target/
 *.local
 .DS_Store
 debug.log
