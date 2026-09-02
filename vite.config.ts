@@ -23,6 +23,12 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5173,
+    strictPort: true,
+    watch: {
+      // Rust keeps DLLs in this directory locked while Tauri compiles. They are
+      // not frontend source files, so watching them only makes Vite crash on Windows.
+      ignored: ['**/src-tauri/target/**'],
+    },
   },
   preview: {
     host: '127.0.0.1',

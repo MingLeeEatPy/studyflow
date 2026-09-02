@@ -16,13 +16,6 @@ pub fn run() {
     .plugin(tauri_plugin_window_state::Builder::new().build())
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
       let open_main = MenuItem::with_id(app, "open-main", "打开 StudyFlow", true, None::<&str>)?;
       let open_timer = MenuItem::with_id(app, "open-timer", "显示计时器", true, None::<&str>)?;
       let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
