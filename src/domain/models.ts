@@ -14,6 +14,7 @@ export type {
   StudyInterval,
   SessionRevision,
   ExecutionSettings,
+  WorkloadTarget,
   StartSessionInput,
   FinishSessionInput,
   SessionOutcome,

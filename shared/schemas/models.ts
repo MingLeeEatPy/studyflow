@@ -221,6 +221,10 @@ export const executionSettingsSchema = z.object({
   completionSound: z.enum(["wind-chime", "forest-birds", "stream-flute", "campfire-bell", "follow-ambience"]).default("wind-chime"),
   notificationsEnabled: z.boolean(),
   stopwatchAutoPauseMinutes: z.number().int().min(60).max(1440),
+  workloadTargets: z.array(z.object({
+    categoryId: z.string().min(1),
+    plannedActions: z.number().int().min(0).max(99),
+  })).default([]),
   updatedAt: isoDateTimeSchema,
 });
 
@@ -364,6 +368,7 @@ export type StudyInterval = z.infer<typeof studyIntervalSchema>;
 export type StudySession = z.infer<typeof studySessionSchema>;
 export type SessionRevision = z.infer<typeof sessionRevisionSchema>;
 export type ExecutionSettings = z.infer<typeof executionSettingsSchema>;
+export type WorkloadTarget = ExecutionSettings["workloadTargets"][number];
 export type PomodoroSettingsSnapshot = z.infer<typeof pomodoroSettingsSnapshotSchema>;
 export type GrowthSourceType = z.infer<typeof growthSourceTypeSchema>;
 export type PlantType = z.infer<typeof plantTypeSchema>;

@@ -30,7 +30,7 @@ describe("V5 到 V6 IndexedDB migration", () => {
     const upgraded = new StudyFlowDatabase(name);
     await upgraded.open();
     expect(await upgraded.executionSettings.get("default")).toMatchObject({
-      ambientSound: "off", ambientVolume: 50, completionSound: "wind-chime", soundVolume: 65,
+      ambientSound: "off", ambientVolume: 50, completionSound: "wind-chime", soundVolume: 65, workloadTargets: [],
     });
     await upgraded.delete();
   });
