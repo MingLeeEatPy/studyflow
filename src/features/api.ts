@@ -1,8 +1,8 @@
-import type { Category, CreateCategoryInput, CreateTaskInput, Task, UpdateTaskInput } from "../domain/models";
-import { backupRepository, categoryRepository, dailyReviewRepository, growthRepository, meditationRepository, planningRepository, sessionRepository, settingsRepository, taskRepository } from "../db";
+import type { Category, CreateCategoryInput, CreateTaskInput, Task, UpdateTaskInput, WeeklyWorkloadPlan } from "../domain/models";
+import { backupRepository, categoryRepository, dailyReviewRepository, growthRepository, meditationRepository, planningRepository, sessionRepository, settingsRepository, taskRepository, weeklyWorkloadPlanRepository, type SaveWeeklyWorkloadPlanInput } from "../db";
 import { enqueueSyncChange } from "../domain/sync";
 
-async function queueEntity(entityType: "task" | "category", entity: { id: string; updatedAt: string; }): Promise<void> {
+async function queueEntity(entityType: "task" | "category" | "weeklyWorkloadPlan", entity: { id: string; updatedAt: string; }): Promise<void> {
   await enqueueSyncChange({ entityType, entityId: entity.id, operation: "upsert", payload: entity, updatedAt: entity.updatedAt });
 }
 
@@ -19,6 +19,12 @@ const categoryApi: StudyFlowApi["categories"] = {
   create: async (input) => { const entity = await categoryRepository.create(input); await queueEntity("category", entity); return entity; },
   update: async (id, input) => { const entity = await categoryRepository.update(id, input); await queueEntity("category", entity); return entity; },
   archive: async (id) => { await categoryRepository.archive(id); const entity = (await categoryRepository.list({ includeArchived: true })).find((item) => item.id === id); if (entity) await queueEntity("category", entity); },
+};
+
+const weeklyWorkloadPlanApi: StudyFlowApi["weeklyWorkloadPlans"] = {
+  list: () => weeklyWorkloadPlanRepository.list(),
+  get: (weekStart) => weeklyWorkloadPlanRepository.get(weekStart),
+  save: async (input) => { const entity = await weeklyWorkloadPlanRepository.save(input); await queueEntity("weeklyWorkloadPlan", entity); return entity; },
 };
 
 export interface StudyFlowApi {
@@ -45,6 +51,11 @@ export interface StudyFlowApi {
   meditation: typeof meditationRepository;
   planning: typeof planningRepository;
   dailyReviews: typeof dailyReviewRepository;
+  weeklyWorkloadPlans: {
+    list(): Promise<WeeklyWorkloadPlan[]>;
+    get(weekStart: string): Promise<WeeklyWorkloadPlan | undefined>;
+    save(input: SaveWeeklyWorkloadPlanInput): Promise<WeeklyWorkloadPlan>;
+  };
 }
 
 export const studyFlowApi: StudyFlowApi = {
@@ -57,4 +68,5 @@ export const studyFlowApi: StudyFlowApi = {
   meditation: meditationRepository,
   planning: planningRepository,
   dailyReviews: dailyReviewRepository,
+  weeklyWorkloadPlans: weeklyWorkloadPlanApi,
 };

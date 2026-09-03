@@ -4,7 +4,7 @@ import {
   BACKUP_FORMAT,
   BACKUP_VERSION,
   backupSchema,
-  backupV5Schema,
+  backupV6Schema,
   type StudyFlowBackup,
 } from "../../shared/schemas/backup";
 import { intervalActiveMs, totalFocusMs } from "../domain/execution";
@@ -51,7 +51,7 @@ export class BackupRepository {
         await this.database.meditationSessions.update(current.id, { status: "paused", revision: current.revision + 1, updatedAt: now });
       });
     }
-    const [tasks, categories, taskEvents, studySessions, studyIntervals, sessionRevisions, executionSettings, growthRecords, meditationSessions, meditationIntervals, planningPeriods, dailyReviews] = await Promise.all([
+    const [tasks, categories, taskEvents, studySessions, studyIntervals, sessionRevisions, executionSettings, growthRecords, meditationSessions, meditationIntervals, planningPeriods, dailyReviews, weeklyWorkloadPlans] = await Promise.all([
       this.database.tasks.toArray(),
       this.database.categories.toArray(),
       this.database.taskEvents.toArray(),
@@ -60,13 +60,14 @@ export class BackupRepository {
       this.database.growthRecords.toArray(), this.database.meditationSessions.toArray(), this.database.meditationIntervals.toArray(),
       this.database.planningPeriods.toArray(),
       this.database.dailyReviews.toArray(),
+      this.database.weeklyWorkloadPlans.toArray(),
     ]);
-    return backupV5Schema.parse({
+    return backupV6Schema.parse({
       format: BACKUP_FORMAT,
       version: BACKUP_VERSION,
       exportedAt: new Date().toISOString(),
       data: { tasks, categories, taskEvents, studySessions, studyIntervals, sessionRevisions,
-        executionSettings: executionSettings ?? defaultExecutionSettings(), growthRecords, meditationSessions, meditationIntervals, planningPeriods, dailyReviews },
+        executionSettings: executionSettings ?? defaultExecutionSettings(), growthRecords, meditationSessions, meditationIntervals, planningPeriods, dailyReviews, weeklyWorkloadPlans },
     });
   }
 
@@ -80,12 +81,13 @@ export class BackupRepository {
       ...parsed.data, studySessions: [], studyIntervals: [], sessionRevisions: [],
       executionSettings: defaultExecutionSettings(),
     } : parsed.data;
-    const backup = parsed.version === 5 ? parsed : backupV5Schema.parse({ ...parsed, version: 5, data: {
+    const backup = parsed.version === 6 ? parsed : backupV6Schema.parse({ ...parsed, version: 6, data: {
       ...executionData,
       growthRecords: "growthRecords" in parsed.data ? parsed.data.growthRecords : [],
       meditationSessions: "meditationSessions" in parsed.data ? parsed.data.meditationSessions : [],
       meditationIntervals: "meditationIntervals" in parsed.data ? parsed.data.meditationIntervals : [],
-      planningPeriods: "planningPeriods" in parsed.data ? parsed.data.planningPeriods : [], dailyReviews: [],
+      planningPeriods: "planningPeriods" in parsed.data ? parsed.data.planningPeriods : [],
+      dailyReviews: "dailyReviews" in parsed.data ? parsed.data.dailyReviews : [], weeklyWorkloadPlans: [],
     }});
     const categoryIds = new Set(backup.data.categories.map((category) => category.id));
     if (backup.data.tasks.some((task) => !categoryIds.has(task.categoryId))) {
@@ -155,7 +157,7 @@ export class BackupRepository {
       "rw",
       [this.database.tasks, this.database.categories, this.database.taskEvents, this.database.studySessions,
         this.database.studyIntervals, this.database.sessionRevisions, this.database.executionSettings,
-        this.database.growthRecords, this.database.meditationSessions, this.database.meditationIntervals, this.database.planningPeriods, this.database.dailyReviews],
+        this.database.growthRecords, this.database.meditationSessions, this.database.meditationIntervals, this.database.planningPeriods, this.database.dailyReviews, this.database.weeklyWorkloadPlans],
       async () => {
         await Promise.all([
           this.database.tasks.clear(),
@@ -165,6 +167,7 @@ export class BackupRepository {
           this.database.growthRecords.clear(), this.database.meditationSessions.clear(), this.database.meditationIntervals.clear(),
           this.database.planningPeriods.clear(),
           this.database.dailyReviews.clear(),
+          this.database.weeklyWorkloadPlans.clear(),
         ]);
         await this.database.categories.bulkAdd(backup.data.categories);
         await this.database.tasks.bulkAdd(backup.data.tasks);
@@ -178,6 +181,7 @@ export class BackupRepository {
         await this.database.meditationIntervals.bulkAdd(backup.data.meditationIntervals);
         await this.database.planningPeriods.bulkAdd(backup.data.planningPeriods);
         await this.database.dailyReviews.bulkAdd(backup.data.dailyReviews);
+        await this.database.weeklyWorkloadPlans.bulkAdd(backup.data.weeklyWorkloadPlans);
       },
     );
   }

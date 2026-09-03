@@ -1,5 +1,5 @@
 import { Maximize2, Pause, Play, Square, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { MeditationInterval, MeditationSession, StudyInterval, StudySession } from "../../shared/schemas/models";
 import { intervalActiveMs, totalFocusMs } from "../domain/execution";
 import { meditationEffectiveMs, totalMeditationMs } from "../domain/meditation";
@@ -24,6 +24,7 @@ export function DesktopTimerApp() {
   const [busy, setBusy] = useState(false);
   const studyBoundaryRevision = useRef<number | null>(null);
   const meditationNoticeRevision = useRef<number | null>(null);
+  const movePointer = useRef<{ pointerId: number; screenX: number; screenY: number } | null>(null);
 
   const refresh = useCallback(async () => {
     const [study, meditation] = await Promise.all([executionAdapter.getActive(), meditationAdapter.getActive()]);
@@ -127,16 +128,31 @@ export function DesktopTimerApp() {
     await desktopBridge.showMain();
     await desktopBridge.hideTimer();
   };
+  const beginMove = (event: PointerEvent<HTMLButtonElement>) => {
+    movePointer.current = { pointerId: event.pointerId, screenX: event.screenX, screenY: event.screenY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const continueMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const current = movePointer.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    const dx = event.screenX - current.screenX, dy = event.screenY - current.screenY;
+    if (dx || dy) { current.screenX = event.screenX; current.screenY = event.screenY; void desktopBridge.moveTimerBy(dx, dy); }
+  };
+  const endMove = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!movePointer.current || movePointer.current.pointerId !== event.pointerId) return;
+    movePointer.current = null; event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  const nudgeMove = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step = 20;
+    const distance = event.key === "ArrowLeft" ? [-step, 0] : event.key === "ArrowRight" ? [step, 0] : event.key === "ArrowUp" ? [0, -step] : event.key === "ArrowDown" ? [0, step] : null;
+    if (!distance) return;
+    event.preventDefault(); void desktopBridge.moveTimerBy(distance[0], distance[1]);
+  };
 
   if (!state) return <main className="desktop-timer-empty"><strong>暂无进行中的计时</strong><button onClick={() => void desktopBridge.showMain()}>打开 StudyFlow</button></main>;
 
   return <main className="desktop-timer-shell" aria-label="StudyFlow 独立计时器">
-    <div
-      className="desktop-timer-titlebar"
-      data-tauri-drag-region
-      aria-label="拖动计时器"
-      onPointerDown={(event) => { if (event.button === 0) void desktopBridge.startTimerDragging(); }}
-    >StudyFlow</div>
+    <div className="desktop-timer-titlebar"><span>StudyFlow</span><button className="desktop-timer-move" aria-label="拖动小窗；可使用方向键微调位置" onPointerDown={beginMove} onPointerMove={continueMove} onPointerUp={endMove} onPointerCancel={endMove} onKeyDown={nudgeMove}>⋮⋮ 移动</button></div>
     <button className="desktop-timer-close" aria-label="隐藏计时器" onClick={() => void desktopBridge.hideTimer()}><X /></button>
     <div className="desktop-timer-copy"><strong title={state.title}>{state.title}</strong><small>{state.status}</small></div>
     <time>{formatDuration(state.seconds)}</time>

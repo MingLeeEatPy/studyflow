@@ -37,6 +37,18 @@ fn start_studyflow_window_drag(app: AppHandle, label: String) -> Result<(), Stri
 }
 
 #[tauri::command]
+fn move_studyflow_window_by(app: AppHandle, label: String, dx: f64, dy: f64) -> Result<(), String> {
+  let window = window_for(&app, &label)?;
+  let position = window.outer_position().map_err(|error| error.to_string())?;
+  let scale = window.scale_factor().map_err(|error| error.to_string())?;
+  let next = tauri::PhysicalPosition::new(
+    position.x + (dx * scale).round() as i32,
+    position.y + (dy * scale).round() as i32,
+  );
+  window.set_position(next).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn send_desktop_timer_action(app: AppHandle, action: String, kind: String) -> Result<(), String> {
   if action != "expand" && action != "finish" {
     return Err("unknown desktop timer action".into());
@@ -59,6 +71,7 @@ pub fn run() {
       reveal_studyflow_window,
       hide_studyflow_window,
       start_studyflow_window_drag,
+      move_studyflow_window_by,
       send_desktop_timer_action,
     ])
     .setup(|app| {

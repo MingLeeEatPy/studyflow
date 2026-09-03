@@ -228,6 +228,28 @@ export const executionSettingsSchema = z.object({
   updatedAt: isoDateTimeSchema,
 });
 
+export const weeklyWorkloadAllocationSchema = z.object({
+  categoryId: z.string().min(1),
+  categoryNameSnapshot: z.string().trim().min(1).max(80),
+  plannedActions: z.number().int().min(1).max(200),
+});
+
+export const weeklyWorkloadPlanSchema = z.object({
+  id: z.string().min(1),
+  weekStart: localDateSchema,
+  totalPlannedActions: z.number().int().min(1).max(200),
+  allocations: z.array(weeklyWorkloadAllocationSchema).min(1),
+  createdAt: isoDateTimeSchema,
+  updatedAt: isoDateTimeSchema,
+}).superRefine((value, ctx) => {
+  if (value.allocations.reduce((sum, allocation) => sum + allocation.plannedActions, 0) !== value.totalPlannedActions) {
+    ctx.addIssue({ code: "custom", path: ["allocations"], message: "各科目的行动数之和必须等于本周总量" });
+  }
+  if (new Set(value.allocations.map((allocation) => allocation.categoryId)).size !== value.allocations.length) {
+    ctx.addIssue({ code: "custom", path: ["allocations"], message: "同一科目只能分配一次" });
+  }
+});
+
 export const growthSourceTypeSchema = z.enum(["study", "meditation"]);
 export const plantTypeSchema = z.enum(["tree", "flower"]);
 export const growthRecordSchema = z.object({
@@ -332,7 +354,7 @@ export const finishSessionInputSchema = z.object({
 
 export const syncEntityTypeSchema = z.enum([
   "category", "task", "planningPeriod", "studySession", "studyInterval", "sessionRevision",
-  "growthRecord", "meditationSession", "meditationInterval", "dailyReview", "executionSettings",
+  "growthRecord", "meditationSession", "meditationInterval", "dailyReview", "weeklyWorkloadPlan", "executionSettings",
 ]);
 export const syncOperationSchema = z.enum(["upsert", "delete"]);
 export const syncChangeSchema = z.object({
@@ -369,6 +391,8 @@ export type StudySession = z.infer<typeof studySessionSchema>;
 export type SessionRevision = z.infer<typeof sessionRevisionSchema>;
 export type ExecutionSettings = z.infer<typeof executionSettingsSchema>;
 export type WorkloadTarget = ExecutionSettings["workloadTargets"][number];
+export type WeeklyWorkloadPlan = z.infer<typeof weeklyWorkloadPlanSchema>;
+export type WeeklyWorkloadAllocation = z.infer<typeof weeklyWorkloadAllocationSchema>;
 export type PomodoroSettingsSnapshot = z.infer<typeof pomodoroSettingsSnapshotSchema>;
 export type GrowthSourceType = z.infer<typeof growthSourceTypeSchema>;
 export type PlantType = z.infer<typeof plantTypeSchema>;

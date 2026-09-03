@@ -10,6 +10,8 @@ export { growthRepository, GrowthRepository } from "./growthRepository";
 export { meditationRepository, MeditationRepository } from "./meditationRepository";
 export { planningRepository, PlanningRepository } from "./planningRepository";
 export { dailyReviewRepository, DailyReviewRepository } from "./dailyReviewRepository";
+export { weeklyWorkloadPlanRepository, WeeklyWorkloadPlanRepository } from "./weeklyWorkloadPlanRepository";
 export type { DailyReviewInput } from "./dailyReviewRepository";
+export type { SaveWeeklyWorkloadPlanInput } from "./weeklyWorkloadPlanRepository";
 export type { PlanningPeriodInput } from "./planningRepository";
 export type { MeditationSleepGapResolution } from "./meditationRepository";

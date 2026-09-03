@@ -15,11 +15,11 @@ describe('完整导出与覆盖导入', () => {
   });
   afterEach(async () => db.delete());
 
-  it('V5 导出包含计划、复盘、执行、成长、冥想数据和设置', async () => {
+  it('V6 导出包含计划、复盘、执行、成长、冥想和周行动计划', async () => {
     const backup = await backups.exportData();
     expect(backup).toMatchObject({
       format: 'studyflow-backup',
-      version: 5,
+      version: 6,
       data: {
         tasks: [], taskEvents: [], studySessions: [], studyIntervals: [], sessionRevisions: [],
         growthRecords: [], meditationSessions: [], meditationIntervals: [],
@@ -73,7 +73,7 @@ describe('完整导出与覆盖导入', () => {
     });
     const upgraded = await backups.exportData();
     expect(upgraded).toMatchObject({
-      version: 5,
+      version: 6,
       data: {
         studySessions: [], studyIntervals: [], sessionRevisions: [], growthRecords: [],
         meditationSessions: [], meditationIntervals: [],

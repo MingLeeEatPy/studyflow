@@ -15,6 +15,8 @@ export type {
   SessionRevision,
   ExecutionSettings,
   WorkloadTarget,
+  WeeklyWorkloadPlan,
+  WeeklyWorkloadAllocation,
   StartSessionInput,
   FinishSessionInput,
   SessionOutcome,

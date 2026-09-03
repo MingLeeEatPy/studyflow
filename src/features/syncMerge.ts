@@ -7,6 +7,7 @@ import {
   meditationIntervalSchema,
   meditationSessionSchema,
   planningPeriodSchema,
+  weeklyWorkloadPlanSchema,
   sessionRevisionSchema,
   studyIntervalSchema,
   studySessionSchema,
@@ -20,6 +21,7 @@ const tableByEntity: Record<SyncEntityType, string> = {
   category: "categories", task: "tasks", planningPeriod: "planningPeriods", studySession: "studySessions",
   studyInterval: "studyIntervals", sessionRevision: "sessionRevisions", growthRecord: "growthRecords",
   meditationSession: "meditationSessions", meditationInterval: "meditationIntervals", dailyReview: "dailyReviews",
+  weeklyWorkloadPlan: "weeklyWorkloadPlans",
   executionSettings: "executionSettings",
 };
 
@@ -31,6 +33,7 @@ const schemaByEntity: Record<SyncEntityType, { safeParse(value: unknown): { succ
   category: categorySchema, task: taskSchema, planningPeriod: planningPeriodSchema, studySession: studySessionSchema,
   studyInterval: studyIntervalSchema, sessionRevision: sessionRevisionSchema, growthRecord: growthRecordSchema,
   meditationSession: meditationSessionSchema, meditationInterval: meditationIntervalSchema, dailyReview: dailyReviewSchema,
+  weeklyWorkloadPlan: weeklyWorkloadPlanSchema,
   executionSettings: executionSettingsSchema,
 };
 

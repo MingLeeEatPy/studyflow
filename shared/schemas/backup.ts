@@ -12,10 +12,11 @@ import {
   taskSchema,
   planningPeriodSchema,
   dailyReviewSchema,
+  weeklyWorkloadPlanSchema,
 } from "./models";
 
 export const BACKUP_FORMAT = "studyflow-backup" as const;
-export const BACKUP_VERSION = 5 as const;
+export const BACKUP_VERSION = 6 as const;
 
 const commonDataSchema = z.object({
   tasks: z.array(taskSchema), categories: z.array(categorySchema).min(1, "备份必须至少包含一个分类"), taskEvents: z.array(taskEventSchema),
@@ -48,6 +49,10 @@ export const backupV5Schema = z.object({
   format: z.literal(BACKUP_FORMAT), version: z.literal(5), exportedAt: z.string().datetime({ offset: true }),
   data: backupV4Schema.shape.data.extend({ dailyReviews: z.array(dailyReviewSchema) }),
 });
-export const backupSchema = z.discriminatedUnion("version", [backupV1Schema, backupV2Schema, backupV3Schema, backupV4Schema, backupV5Schema]);
-export type StudyFlowBackup = z.infer<typeof backupV5Schema>;
+export const backupV6Schema = z.object({
+  format: z.literal(BACKUP_FORMAT), version: z.literal(6), exportedAt: z.string().datetime({ offset: true }),
+  data: backupV5Schema.shape.data.extend({ weeklyWorkloadPlans: z.array(weeklyWorkloadPlanSchema) }),
+});
+export const backupSchema = z.discriminatedUnion("version", [backupV1Schema, backupV2Schema, backupV3Schema, backupV4Schema, backupV5Schema, backupV6Schema]);
+export type StudyFlowBackup = z.infer<typeof backupV6Schema>;
 export type CompatibleStudyFlowBackup = z.infer<typeof backupSchema>;

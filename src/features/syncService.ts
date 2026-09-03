@@ -42,6 +42,7 @@ export function hasMeaningfulLocalData(data: Record<string, unknown>): boolean {
   const meaningfulCollections = [
     "tasks", "planningPeriods", "studySessions", "studyIntervals", "sessionRevisions",
     "growthRecords", "meditationSessions", "meditationIntervals", "dailyReviews",
+    "weeklyWorkloadPlans",
   ];
   if (meaningfulCollections.some((key) => Array.isArray(data[key]) && data[key].length > 0)) return true;
   const defaultNames = new Set<string>(DEFAULT_CATEGORY_NAMES);
@@ -96,16 +97,17 @@ function backupEntityEntries(backup: Awaited<ReturnType<typeof backupRepository.
     ...backup.data.meditationSessions.map((entity) => ({ entityType: "meditationSession" as const, entity: stamp(entity) })),
     ...backup.data.meditationIntervals.map((entity) => ({ entityType: "meditationInterval" as const, entity: stamp(entity) })),
     ...backup.data.dailyReviews.map((entity) => ({ entityType: "dailyReview" as const, entity: stamp(entity) })),
+    ...backup.data.weeklyWorkloadPlans.map((entity) => ({ entityType: "weeklyWorkloadPlan" as const, entity: stamp(entity) })),
     { entityType: "executionSettings" as const, entity: stamp(backup.data.executionSettings) },
   ];
 }
 
 async function collectCurrentEntries(): Promise<Array<{ entityType: SyncEntityType; entity: { id: string; updatedAt: string } }>> {
-  const [categories, tasks, planningPeriods, studySessions, studyIntervals, sessionRevisions, growthRecords, meditationSessions, meditationIntervals, dailyReviews, executionSettings] = await Promise.all([
+  const [categories, tasks, planningPeriods, studySessions, studyIntervals, sessionRevisions, growthRecords, meditationSessions, meditationIntervals, dailyReviews, weeklyWorkloadPlans, executionSettings] = await Promise.all([
     db.categories.toArray(), db.tasks.toArray(), db.planningPeriods.toArray(), db.studySessions.toArray(), db.studyIntervals.toArray(),
-    db.sessionRevisions.toArray(), db.growthRecords.toArray(), db.meditationSessions.toArray(), db.meditationIntervals.toArray(), db.dailyReviews.toArray(), db.executionSettings.get("default"),
+    db.sessionRevisions.toArray(), db.growthRecords.toArray(), db.meditationSessions.toArray(), db.meditationIntervals.toArray(), db.dailyReviews.toArray(), db.weeklyWorkloadPlans.toArray(), db.executionSettings.get("default"),
   ]);
-  return backupEntityEntries({ data: { categories, tasks, planningPeriods, studySessions, studyIntervals, sessionRevisions, growthRecords, meditationSessions, meditationIntervals, dailyReviews, executionSettings: executionSettings! } } as Awaited<ReturnType<typeof backupRepository.exportData>>);
+  return backupEntityEntries({ data: { categories, tasks, planningPeriods, studySessions, studyIntervals, sessionRevisions, growthRecords, meditationSessions, meditationIntervals, dailyReviews, weeklyWorkloadPlans, executionSettings: executionSettings! } } as Awaited<ReturnType<typeof backupRepository.exportData>>);
 }
 
 function entryKey(entityType: SyncEntityType, entityId: string): string {

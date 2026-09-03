@@ -12,6 +12,7 @@ import type {
   TaskEvent,
   PlanningPeriod,
   DailyReview,
+  WeeklyWorkloadPlan,
   SyncChange,
 } from "../domain/models";
 
@@ -38,6 +39,7 @@ export class StudyFlowDatabase extends Dexie {
   meditationIntervals!: Table<MeditationInterval, string>;
   planningPeriods!: Table<PlanningPeriod, string>;
   dailyReviews!: Table<DailyReview, string>;
+  weeklyWorkloadPlans!: Table<WeeklyWorkloadPlan, string>;
   syncOutbox!: Table<SyncChange, string>;
 
   constructor(name = "StudyFlow") {
@@ -135,6 +137,20 @@ export class StudyFlowDatabase extends Dexie {
       await tx.table<ExecutionSettings, string>("executionSettings").toCollection().modify((value) => {
         value.workloadTargets ??= [];
       });
+    });
+    this.version(8).stores({
+      tasks: "id, categoryId, planId, isCoreTask, dueDate, completed, archivedAt, createdAt",
+      categories: "id, &name, sortOrder, archivedAt, createdAt",
+      taskEvents: "id, taskId, &sequence, type, occurredAt",
+      studySessions: "id, taskId, categoryId, status, mode, startedAt, endedAt, updatedAt",
+      studyIntervals: "id, sessionId, kind, startedAt, endedAt",
+      sessionRevisions: "id, sessionId, createdAt", executionSettings: "id",
+      growthRecords: "id, &sourceSessionId, sourceType, plantType, localDate, createdAt",
+      meditationSessions: "id, status, mode, startedAt, endedAt, updatedAt",
+      meditationIntervals: "id, sessionId, kind, startedAt, endedAt",
+      planningPeriods: "id, type, parentId, startDate, endDate, createdAt",
+      dailyReviews: "id, &localDate, updatedAt", weeklyWorkloadPlans: "id, &weekStart, updatedAt",
+      syncOutbox: "id, syncedAt, entityType, [entityType+entityId], updatedAt",
     });
 
     this.on("populate", () => {
