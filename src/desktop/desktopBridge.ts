@@ -3,9 +3,10 @@ type TauriWindow = Window & { __TAURI_INTERNALS__?: unknown; isTauri?: boolean }
 export function isStudyFlowDesktop(): boolean {
   if (typeof window === "undefined") return false;
   const host = window as TauriWindow;
-  // Tauri v2 exposes `isTauri` in production builds. Older dev WebViews may
-  // expose only the internal bridge, so accept either official runtime marker.
-  return Boolean(host.isTauri || host.__TAURI_INTERNALS__);
+  // `withGlobalTauri` makes `isTauri` explicit in installed builds. The
+  // protocol fallback keeps desktop detection independent of private bridges.
+  const tauriOrigin = host.location.hostname === "tauri.localhost" || host.location.protocol === "tauri:";
+  return Boolean(host.isTauri || host.__TAURI_INTERNALS__ || tauriOrigin);
 }
 
 type DesktopTimerAction = { action: "expand" | "finish"; kind: "study" | "meditation" };
