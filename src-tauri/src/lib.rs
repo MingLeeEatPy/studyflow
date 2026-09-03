@@ -31,6 +31,12 @@ fn hide_studyflow_window(app: AppHandle, label: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn start_studyflow_window_drag(app: AppHandle, label: String) -> Result<(), String> {
+  let window = window_for(&app, &label)?;
+  window.start_dragging().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn send_desktop_timer_action(app: AppHandle, action: String, kind: String) -> Result<(), String> {
   if action != "expand" && action != "finish" {
     return Err("unknown desktop timer action".into());
@@ -52,6 +58,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       reveal_studyflow_window,
       hide_studyflow_window,
+      start_studyflow_window_drag,
       send_desktop_timer_action,
     ])
     .setup(|app| {

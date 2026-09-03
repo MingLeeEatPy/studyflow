@@ -135,7 +135,7 @@ export function DesktopTimerApp() {
       className="desktop-timer-titlebar"
       data-tauri-drag-region
       aria-label="拖动计时器"
-      onMouseDown={() => void desktopBridge.startDragging()}
+      onPointerDown={(event) => { if (event.button === 0) void desktopBridge.startTimerDragging(); }}
     >StudyFlow</div>
     <button className="desktop-timer-close" aria-label="隐藏计时器" onClick={() => void desktopBridge.hideTimer()}><X /></button>
     <div className="desktop-timer-copy"><strong title={state.title}>{state.title}</strong><small>{state.status}</small></div>

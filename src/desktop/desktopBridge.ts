@@ -26,11 +26,7 @@ export const desktopBridge = {
   showTimer: () => invokeDesktop("reveal_studyflow_window", { label: "timer" }),
   hideMain: () => invokeDesktop("hide_studyflow_window", { label: "main" }),
   hideTimer: () => invokeDesktop("hide_studyflow_window", { label: "timer" }),
-  async startDragging() {
-    if (!isStudyFlowDesktop()) return;
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().startDragging();
-  },
+  startTimerDragging: () => invokeDesktop("start_studyflow_window_drag", { label: "timer" }),
   async notify(title: string, body: string) {
     if (!isStudyFlowDesktop()) return;
     const { isPermissionGranted, sendNotification } = await import("@tauri-apps/plugin-notification");
