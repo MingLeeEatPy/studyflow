@@ -8,7 +8,7 @@ const labels: Record<BackgroundReminderStatus, string> = {
   subscribed: "本设备已启用后台提醒",
   denied: "通知权限已被系统拒绝，请到系统设置中允许 StudyFlow 通知",
   offline: "当前离线，返回前台后仍会校正时间",
-  "not-configured": "线上环境尚未配置推送服务",
+  "not-configured": "后台 Web Push 尚未上线；前台提示音与返回 StudyFlow 后的真实时间校正仍可正常使用。",
   error: "后台提醒暂时不可用",
 };
 
