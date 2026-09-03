@@ -1,11 +1,11 @@
 {
-  "version": "0.4.4",
-  "notes": "独立计时器支持通过顶部标题栏自由拖动；网页微缩计时器也会记住拖动位置。",
-  "pub_date": "2026-09-03T07:40:43Z",
+  "version": "0.4.5",
+  "notes": "新增学习计划教练分析：每周最低行动计划、完成分布、节奏和下周建议；独立计时器增加明确的移动把手。",
+  "pub_date": "2026-09-03T09:21:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://studyflow.2442066641.workers.dev/desktop/StudyFlow_0.4.4_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTYkxjVDAxNDRGVGU4VDJ5YVNRNktwWElHVDZKMkp3V3BDZEdOMUQ1VmJLWUxTOXduMzl3UDBweXBEdGtKcWRaMG1kcjQ1RGZOYTllT21SOWpKVXhiWlUzcytUM2FzM2dRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg4NDIxMjQyCWZpbGU6U3R1ZHlGbG93XzAuNC40X3g2NC1zZXR1cC5leGUKakdpblVIS2E4bVNFVVZsUXNVR1Z6MFE3OGJsdGt5VFEzZ3Y1MUhDZnhXV2daaWFsd2RZcjhRY3NtMExHS1FabnAyVlhpSDFDRGR6NklIRlB2a2hDRGc9PQo="
+      "url": "https://studyflow.2442066641.workers.dev/desktop/StudyFlow_0.4.5_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTYkxjVDAxNDRGVFEyMVA2MlBpZXNWUkkvelNDZy9tV0VSYjZjTU04dDBrK2hwaHpGWVZwcysyWWZqR2VEY3hHRTdrcGk4bnVEWnV0NkYwSzZFMG5WdUhTNDU3OXRMOGdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg4NDI3MjYwCWZpbGU6U3R1ZHlGbG93XzAuNC41X3g2NC1zZXR1cC5leGUKVkUvZ2JlbWdyK0MwcXliQzY5L0hUNXMzcjM3ZTFYTG5XT2tIalVab3U5eFVrMVd1eVQxZXdoeGNVQTM5ZUl6VEMwRVV6REJMWTV4eVlsdkpYZFMxQVE9PQo="
     }
   }
 }
