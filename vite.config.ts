@@ -1,6 +1,17 @@
 import { defineConfig } from 'vitest/config'
+import { rmSync } from 'node:fs'
+import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+
+const omitDesktopReleaseAssets = {
+  name: 'omit-desktop-release-assets-from-desktop-bundle',
+  closeBundle() {
+    if (process.env.STUDYFLOW_DESKTOP_BUILD === '1') {
+      rmSync(resolve('dist', 'desktop'), { recursive: true, force: true })
+    }
+  },
+}
 
 export default defineConfig({
   plugins: [react(), VitePWA({
@@ -19,7 +30,7 @@ export default defineConfig({
       ],
     },
     injectManifest: { globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,ogg,wav}'], maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
-  })],
+  }), omitDesktopReleaseAssets],
   server: {
     host: '127.0.0.1',
     port: 5173,
