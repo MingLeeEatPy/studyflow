@@ -1,12 +1,15 @@
 type TauriWindow = Window & { __TAURI_INTERNALS__?: unknown; isTauri?: boolean };
 
+export function isTauriDesktopOrigin(location: Pick<Location, "hostname" | "protocol">): boolean {
+  return location.hostname === "tauri.localhost" || location.protocol === "tauri:";
+}
+
 export function isStudyFlowDesktop(): boolean {
   if (typeof window === "undefined") return false;
   const host = window as TauriWindow;
   // `withGlobalTauri` makes `isTauri` explicit in installed builds. The
   // protocol fallback keeps desktop detection independent of private bridges.
-  const tauriOrigin = host.location.hostname === "tauri.localhost" || host.location.protocol === "tauri:";
-  return Boolean(host.isTauri || host.__TAURI_INTERNALS__ || tauriOrigin);
+  return Boolean(host.isTauri || host.__TAURI_INTERNALS__ || isTauriDesktopOrigin(host.location));
 }
 
 type DesktopTimerAction = { action: "expand" | "finish"; kind: "study" | "meditation" };
