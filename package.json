@@ -19,6 +19,8 @@
     "@supabase/supabase-js": "^2.112.4",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-notification": "^2.4.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.11.0",
     "@tauri-apps/plugin-window-state": "^2.4.1",
     "dexie": "^4.2.0",
     "dexie-react-hooks": "^4.2.0",

@@ -4,10 +4,11 @@ use tauri::{
   AppHandle, Emitter, Manager, WebviewWindow, WindowEvent,
 };
 
-fn reveal(window: &WebviewWindow) {
-  let _ = window.unminimize();
-  let _ = window.show();
-  let _ = window.set_focus();
+fn reveal(window: &WebviewWindow) -> Result<(), String> {
+  window.unminimize().map_err(|error| error.to_string())?;
+  window.show().map_err(|error| error.to_string())?;
+  window.set_focus().map_err(|error| error.to_string())?;
+  Ok(())
 }
 
 fn window_for(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
@@ -20,8 +21,7 @@ fn window_for(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
 #[tauri::command]
 fn reveal_studyflow_window(app: AppHandle, label: String) -> Result<(), String> {
   let window = window_for(&app, &label)?;
-  reveal(&window);
-  Ok(())
+  reveal(&window)
 }
 
 #[tauri::command]
@@ -47,6 +47,8 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_window_state::Builder::new().build())
     .plugin(tauri_plugin_notification::init())
+    .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_process::init())
     .invoke_handler(tauri::generate_handler![
       reveal_studyflow_window,
       hide_studyflow_window,
@@ -64,7 +66,7 @@ pub fn run() {
         .on_menu_event(|app, event| match event.id.as_ref() {
           "open-main" => {
             if let Some(window) = app.get_webview_window("main") {
-              reveal(&window);
+              let _ = reveal(&window);
             }
           }
           "quit" => app.exit(0),

@@ -4,6 +4,7 @@ import type { ExecutionSettings } from "../features/executionTypes";
 import { authAdapter, type AuthUser } from "../features/authAdapter";
 import { confirmFirstMerge, createLocalBackup, initializeCloudSync, syncNow, type MergeSummary, type SyncStatus } from "../features/syncService";
 import { BackgroundReminderPanel } from "../components/BackgroundReminderPanel";
+import { DesktopUpdateCard } from "../components/DesktopUpdateCard";
 import { reminderService } from "../features/reminderService";
 
 type Props = { settings: ExecutionSettings | null; onSave: (value: Partial<ExecutionSettings>) => Promise<void>; onPreviewCompletionSound: (value: Pick<ExecutionSettings, "completionSound" | "ambientSound" | "soundVolume">) => void; onPreviewAmbientSound: (sound: AmbientSound, volume: number) => void };
@@ -19,7 +20,7 @@ export function ExecutionSettingsPage({ settings, onSave, onPreviewCompletionSou
     <section><div><h2>安全与提醒</h2><p>正计时在切换应用、锁屏或后台期间不会自动暂停；返回 StudyFlow 后会按真实经过时间校正。</p></div><div className="settings-grid"><label className="setting-switch"><span><strong>提示音</strong><small>阶段结束时播放提示音</small></span><input type="checkbox" checked={draft.soundEnabled} onChange={(event) => setDraft({ ...draft, soundEnabled: event.target.checked })} /></label><label className="field"><span>结束提示音</span><select disabled={!draft.soundEnabled} value={draft.completionSound} onChange={(event) => setDraft({ ...draft, completionSound: event.target.value as ExecutionSettings["completionSound"] })}>{Object.entries(COMPLETION_SOUNDS).map(([value, option]) => <option key={value} value={value}>{option.label}</option>)}<option value="follow-ambience">跟随环境声</option></select></label><div className={`volume-setting${draft.soundEnabled ? "" : " disabled"}`}><label htmlFor="sound-volume"><span><strong>提示音音量</strong></span><output>{draft.soundVolume}%</output></label><input id="sound-volume" aria-label="提示音音量" type="range" min="10" max="100" step="5" disabled={!draft.soundEnabled} value={draft.soundVolume} onChange={(event) => setDraft({ ...draft, soundVolume: Number(event.target.value) })} /><button className="button secondary" type="button" disabled={!draft.soundEnabled} onClick={() => onPreviewCompletionSound(draft)}>试听提示音</button></div><label className="setting-switch"><span><strong>浏览器通知</strong><small>需要浏览器授权通知权限</small></span><input type="checkbox" checked={draft.notificationsEnabled} onChange={(event) => setDraft({ ...draft, notificationsEnabled: event.target.checked })} /></label></div></section>
     <BackgroundReminderPanel onEnableNotifications={async()=>{setDraft({...draft,notificationsEnabled:true});await onSave({notificationsEnabled:true})}}/>
     <footer><span>{saved ? "设置已保存" : "声音设置只影响之后开始的会话"}</span><button className="button primary" disabled={saving}>{saving ? "正在保存…" : "保存设置"}</button></footer>
-  </form><SyncSettings /></>;
+  </form><DesktopUpdateCard /><SyncSettings /></>;
 }
 
 function NumberField({ label, value, min, max, unit = "分钟", onChange }: { label: string; value: number; min: number; max: number; unit?: string; onChange: (value: number) => void }) { return <label className="field"><span>{label}</span><div className="number-input"><input type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /><small>{unit}</small></div></label>; }
