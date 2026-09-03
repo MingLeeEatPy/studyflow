@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "StudyFlow",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "identifier": "com.studyflow.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -25,13 +25,13 @@
       {
         "label": "timer",
         "url": "/#desktop-timer",
-        "title": "StudyFlow 计时器",
+        "title": "StudyFlow 计时器 · v0.4.7",
         "width": 308,
-        "height": 124,
+        "height": 154,
         "minWidth": 260,
         "minHeight": 100,
         "resizable": false,
-        "decorations": false,
+        "decorations": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false,
@@ -64,7 +64,7 @@
         "https://studyflow.2442066641.workers.dev/desktop/latest.json"
       ],
       "windows": {
-        "installMode": "passive"
+        "installMode": "basicUi"
       }
     }
   }
