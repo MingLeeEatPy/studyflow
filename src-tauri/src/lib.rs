@@ -54,9 +54,8 @@ pub fn run() {
     ])
     .setup(|app| {
       let open_main = MenuItem::with_id(app, "open-main", "打开 StudyFlow", true, None::<&str>)?;
-      let open_timer = MenuItem::with_id(app, "open-timer", "显示计时器", true, None::<&str>)?;
       let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-      let menu = Menu::with_items(app, &[&open_main, &open_timer, &quit])?;
+      let menu = Menu::with_items(app, &[&open_main, &quit])?;
 
       TrayIconBuilder::new()
         .icon(app.default_window_icon().expect("application icon is required").clone())
@@ -68,15 +67,17 @@ pub fn run() {
               reveal(&window);
             }
           }
-          "open-timer" => {
-            if let Some(window) = app.get_webview_window("timer") {
-              reveal(&window);
-            }
-          }
           "quit" => app.exit(0),
           _ => {}
         })
         .build(app)?;
+
+      // Window-state can restore a timer window from a prior session. The
+      // compact timer is intentional only after a user minimizes an active
+      // focus session, so the app must always begin with the main window.
+      if let Some(window) = app.get_webview_window("timer") {
+        let _ = window.hide();
+      }
 
       Ok(())
     })

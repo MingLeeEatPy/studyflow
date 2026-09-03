@@ -131,7 +131,12 @@ export function DesktopTimerApp() {
   if (!state) return <main className="desktop-timer-empty"><strong>暂无进行中的计时</strong><button onClick={() => void desktopBridge.showMain()}>打开 StudyFlow</button></main>;
 
   return <main className="desktop-timer-shell" aria-label="StudyFlow 独立计时器">
-    <button className="desktop-timer-drag" aria-label="拖动计时器" onMouseDown={() => void desktopBridge.startDragging()}>StudyFlow</button>
+    <div
+      className="desktop-timer-titlebar"
+      data-tauri-drag-region
+      aria-label="拖动计时器"
+      onMouseDown={() => void desktopBridge.startDragging()}
+    >StudyFlow</div>
     <button className="desktop-timer-close" aria-label="隐藏计时器" onClick={() => void desktopBridge.hideTimer()}><X /></button>
     <div className="desktop-timer-copy"><strong title={state.title}>{state.title}</strong><small>{state.status}</small></div>
     <time>{formatDuration(state.seconds)}</time>
