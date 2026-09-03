@@ -1,0 +1,5 @@
+/desktop/latest.json
+  Cache-Control: no-store, max-age=0
+
+/desktop/*.exe
+  Cache-Control: public, max-age=31536000, immutable

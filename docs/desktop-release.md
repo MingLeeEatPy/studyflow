@@ -51,11 +51,11 @@ npm.cmd run desktop:build
 3. 从 `src-tauri\target\release\bundle\nsis\` 取出：
 
 ```text
-StudyFlow_<版本>_x64-setup.nsis.zip
-StudyFlow_<版本>_x64-setup.nsis.zip.sig
+StudyFlow_<版本>_x64-setup.exe
+StudyFlow_<版本>_x64-setup.exe.sig
 ```
 
-4. 将 `.zip` 放到 Cloudflare Pages 静态站点的 `desktop/` 路径。该文件名必须带版本号，发布后不覆盖旧文件。
+4. 将 `.exe` 放到 Cloudflare 静态站点的 `desktop/` 路径。该文件名必须带版本号，发布后不覆盖旧文件。
 5. 覆盖 `desktop/latest.json`。其中 `signature` 必须完整复制匹配 `.sig` 文件的内容：
 
 ```json
@@ -65,7 +65,7 @@ StudyFlow_<版本>_x64-setup.nsis.zip.sig
   "pub_date": "2026-09-03T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://你的正式域名/desktop/StudyFlow_0.4.1_x64-setup.nsis.zip",
+      "url": "https://你的正式域名/desktop/StudyFlow_0.4.1_x64-setup.exe",
       "signature": "完整的 .sig 文件内容"
     }
   }

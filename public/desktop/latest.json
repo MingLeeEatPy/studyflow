@@ -1,0 +1,11 @@
+{
+  "version": "0.4.1",
+  "notes": "首次提供 Windows 桌面版自动更新，并修复小计时器的启动与显示路径。",
+  "pub_date": "2026-09-03T02:22:31Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://studyflow.2442066641.workers.dev/desktop/StudyFlow_0.4.1_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTYkxjVDAxNDRGVFJkc1loRWpCK3Z6OXRYdU50K09JTlpsNXFvMkpVcnByTnYzS3I4S1M3UnkrUlFsUzJWU3VIbW9abXhLeFQ5V2Zac1FvRll1LzVPa0F5azh6MnF3aHdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg4NDAyMTUxCWZpbGU6U3R1ZHlGbG93XzAuNC4xX3g2NC1zZXR1cC5leGUKWklSS2FROG1KaXUvb0p1aklKTGlCUTJ5Q2txbmg1TlZkRzlzRjBhL1pNa0NqT3p3TDJqTDQyK2k4REhIOXJsUzJMVURnd3REeks3MjdHQ2w1M2JpQmc9PQo="
+    }
+  }
+}

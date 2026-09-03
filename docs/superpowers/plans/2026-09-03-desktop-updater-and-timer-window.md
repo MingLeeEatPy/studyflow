@@ -52,7 +52,7 @@ The published JSON contains one Windows x64 updater artifact:
   "pub_date": "2026-09-03T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://<StudyFlow Cloudflare Pages production domain>/desktop/StudyFlow_0.4.1_x64-setup.nsis.zip",
+      "url": "https://<StudyFlow Cloudflare Pages production domain>/desktop/StudyFlow_0.4.1_x64-setup.exe",
       "signature": "CONTENTS_OF_THE_MATCHING_SIG_FILE"
     }
   }
@@ -365,7 +365,7 @@ The documentation must say to increment both `src-tauri/Cargo.toml` and `src-tau
 
 - [ ] **Step 2: Publish release assets to the production Pages project**
 
-Copy the generated `StudyFlow_<version>_x64-setup.nsis.zip` to `public/desktop/`. Create `public/desktop/latest.json` from the matching `.sig` file content, with the matching version and archive URL. Commit both release files and let the existing Cloudflare Pages GitHub deployment publish them.
+Copy the generated `StudyFlow_<version>_x64-setup.exe` to `public/desktop/`. Create `public/desktop/latest.json` from the matching `.sig` file content, with the matching version and installer URL. Commit both release files and let the existing Cloudflare Pages GitHub deployment publish them.
 
 Do not place the private key, its password, a plaintext bearer token, or an `.env` file under `public/`, Git, or Cloudflare Pages.
 
@@ -386,7 +386,7 @@ Install the prior NSIS release (not a standalone `studyflow.exe`). Start it, ope
 - [ ] **Step 5: Commit documentation and release metadata**
 
 ```powershell
-git add docs/desktop-release.md public/desktop/latest.json public/desktop/StudyFlow_<version>_x64-setup.nsis.zip
+git add docs/desktop-release.md public/desktop/latest.json public/desktop/StudyFlow_<version>_x64-setup.exe
 git commit -m "chore: publish StudyFlow desktop update <version>"
 ```
 
